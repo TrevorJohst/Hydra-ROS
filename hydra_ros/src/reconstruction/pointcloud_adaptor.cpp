@@ -35,6 +35,7 @@
 #include "hydra_ros/reconstruction/pointcloud_adaptor.h"
 
 #include <glog/logging.h>
+#include <hydra/common/common.h>
 
 namespace hydra {
 
@@ -197,22 +198,22 @@ std::function<cv::Vec3b(const uint8_t*)> initColorParser(const PointField& field
 PointcloudAdaptor::PointcloudAdaptor(const sensor_msgs::PointCloud2& cloud) {
   for (const auto& field : cloud.fields) {
     if (field.name == "x") {
-      VLOG(10) << "found x field: " << field;
+      VLOG(VLEVEL_DEBUG) << "found x field: " << field;
       x_parser_ = initFloatParser(field);
     } else if (field.name == "y") {
-      VLOG(10) << "found y field: " << field;
+      VLOG(VLEVEL_DEBUG) << "found y field: " << field;
       y_parser_ = initFloatParser(field);
     } else if (field.name == "z") {
-      VLOG(10) << "found z field: " << field;
+      VLOG(VLEVEL_DEBUG) << "found z field: " << field;
       z_parser_ = initFloatParser(field);
     } else if (field.name == "rgb" || field.name == "rgba") {
-      VLOG(10) << "found color field: " << field;
+      VLOG(VLEVEL_DEBUG) << "found color field: " << field;
       color_parser_ = initColorParser(field);
     } else if (field.name == "label" || field.name == "ring") {
-      VLOG(10) << "found label field: " << field;
+      VLOG(VLEVEL_DEBUG) << "found label field: " << field;
       label_parser_ = initIntParser(field);
     } else {
-      VLOG(10) << "unknown field: " << field;
+      VLOG(VLEVEL_DEBUG) << "unknown field: " << field;
     }
   }
 }

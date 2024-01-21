@@ -39,6 +39,7 @@
 #include <config_utilities/printing.h>
 #include <config_utilities/validation.h>
 #include <glog/logging.h>
+#include <hydra/common/common.h>
 #include <hydra/common/hydra_config.h>
 #include <sensor_msgs/CameraInfo.h>
 
@@ -58,10 +59,11 @@ RosSensorExtrinsics::RosSensorExtrinsics(const RosSensorExtrinsics::Config& conf
   CHECK(pose_status.is_valid) << "Could not look up extrinsics from ros!";
   body_R_sensor = pose_status.target_R_source;
   body_p_sensor = pose_status.target_p_source;
-  VLOG(5) << "body_R_sensor: {w: " << body_R_sensor.w() << ", x: " << body_R_sensor.x()
-          << ", y: " << body_R_sensor.y() << ", z: " << body_R_sensor.z() << "}";
-  VLOG(5) << "body_p_sensor: [" << body_p_sensor.x() << ", " << body_p_sensor.y()
-          << ", " << body_p_sensor.z() << "]";
+  VLOG(VLEVEL_FILE) << "body_R_sensor: {w: " << body_R_sensor.w()
+                    << ", x: " << body_R_sensor.x() << ", y: " << body_R_sensor.y()
+                    << ", z: " << body_R_sensor.z() << "}";
+  VLOG(VLEVEL_FILE) << "body_p_sensor: [" << body_p_sensor.x() << ", "
+                    << body_p_sensor.y() << ", " << body_p_sensor.z() << "]";
 }
 
 RosIntrinsicsRegistration::RosIntrinsicsRegistration(const std::string& name) {

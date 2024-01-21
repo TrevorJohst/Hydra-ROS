@@ -37,8 +37,9 @@
 #include <config_utilities/logging/log_to_glog.h>
 #include <config_utilities/parsing/ros.h>
 #include <hydra/common/hydra_config.h>
+#include <hydra/reconstruction/reconstruction_module.h>
 
-#include "hydra_ros/reconstruction/ros_reconstruction.h"
+#include "hydra_ros/common/input_module.h"
 #include "hydra_ros/utils/node_utilities.h"
 
 int main(int argc, char* argv[]) {
@@ -60,13 +61,19 @@ int main(int argc, char* argv[]) {
   const auto hydra_config = config::fromRos<hydra::PipelineConfig>(nh);
   hydra::HydraConfig::init(hydra_config, robot_id);
 
-  auto module = config::createFromROS<hydra::ReconstructionModule>(nh, nullptr);
-  module->start();
+  auto reconstruction = config::createFromROS<hydra::ReconstructionModule>(
+      ros::NodeHandle(nh, "reconstruction"), nullptr);
+  auto input_module = config::createFromROS<hydra::InputModule>(
+      ros::NodeHandle(nh, "input"), reconstruction->queue());
+  input_module->start();
+  reconstruction->start();
   hydra::spinAndWait(nh);
-  module->stop();
+  input_module->stop();
+  reconstruction->stop();
+
   const auto& logs = hydra::HydraConfig::instance().getLogs();
   if (logs) {
-    module->save(*logs);
+    reconstruction->save(*logs);
   }
 
   hydra::HydraConfig::exit();

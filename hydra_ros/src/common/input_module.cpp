@@ -32,102 +32,68 @@
  * Government is authorized to reproduce and distribute reprints for Government
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
-#include "hydra_ros/reconstruction/ros_reconstruction.h"
+#include "hydra_ros/common/input_module.h"
 
 #include <config_utilities/printing.h>
+#include <config_utilities/validation.h>
+#include <hydra/common/common.h>
 #include <hydra/common/hydra_config.h>
 
-#include "hydra_ros/reconstruction/image_receiver.h"
-#include "hydra_ros/reconstruction/pointcloud_receiver.h"
 #include "hydra_ros/utils/lookup_tf.h"
 
 namespace hydra {
 
-using pose_graph_tools_msgs::PoseGraph;
-using sensor_msgs::PointCloud2;
-
-RosReconstruction::RosReconstruction(const RosReconstructionConfig& config,
-                                     const OutputQueue::Ptr& output_queue)
-    : ReconstructionModule(
-          config, output_queue ? output_queue : std::make_shared<OutputQueue>()),
-      config_(config),
-      nh_(ros::NodeHandle(config.reconstruction_ns)) {
-  buffer_.reset(new tf2_ros::Buffer(ros::Duration(config_.tf_buffer_size_s)));
+InputModule::InputModule(const InputConfig& config, const OutputQueue::Ptr& queue)
+    : config(config::checkValid(config)),
+      nh_(ros::NodeHandle(config.ns)),
+      queue_(queue) {
+  buffer_.reset(new tf2_ros::Buffer(ros::Duration(config.tf_buffer_size_s)));
   tf_listener_.reset(new tf2_ros::TransformListener(*buffer_));
-  data_queue_.reset(new DataQueue());
 
-  if (config_.use_image_receiver) {
-    data_receiver_.reset(new ImageReceiver(
-        nh_, data_queue_, config_.input_separation_s, config_.image_queue_size));
-  } else {
-    data_receiver_.reset(new PointcloudReceiver(
-        nh_, data_queue_, config_.input_separation_s, config_.image_queue_size));
-  }
-
-  if (!config_.pose_graphs.make_pose_graph) {
-    pose_graph_sub_ =
-        nh_.subscribe("pose_graph", 1000, &RosReconstruction::handlePoseGraph, this);
-
-    agent_node_meas_sub_ =
-        nh_.subscribe("agent_node_measurements",
-                      1,
-                      &RosReconstruction::handleAgentNodeMeasurements,
-                      this);
-  }
-
-  data_thread_.reset(new std::thread(&RosReconstruction::dataSpin, this));
-
-  if (!config_.enable_output_queue && !output_queue) {
-    // reset output queue so we don't waste memory with queued packets
-    output_queue_.reset();
-  }
+  receiver_ = config.receiver.create();
 }
 
-RosReconstruction::~RosReconstruction() {
-  stop();
+InputModule::~InputModule() { stop(); }
+
+void InputModule::start() {
+  receiver_->init();
+  data_thread_.reset(new std::thread(&InputModule::dataSpin, this));
+  LOG(INFO) << "[Hydra Input] started!";
+}
+
+void InputModule::stop() {
+  should_shutdown_ = true;
 
   if (data_thread_) {
-    VLOG(2) << "[Hydra Reconstruction] stopping pointcloud input thread";
+    VLOG(VLEVEL_TRACE) << "[Hydra Input] stopping pointcloud input thread";
     data_thread_->join();
     data_thread_.reset();
-    VLOG(2) << "[Hydra Reconstruction] stopped pointcloud input thread";
+    VLOG(VLEVEL_TRACE) << "[Hydra Input] stopped pointcloud input thread";
   }
 
-  VLOG(2) << "[Hydra Reconstruction] data queue: " << data_queue_->size();
+  VLOG(VLEVEL_TRACE) << "[Hydra Input] data queue: " << receiver_->queue.size();
 }
 
-std::string RosReconstruction::printInfo() const {
+void InputModule::save(const LogSetup&) {}
+
+std::string InputModule::printInfo() const {
   std::stringstream ss;
-  ss << config::toString(config_);
+  ss << config::toString(config);
   return ss.str();
 }
 
-void RosReconstruction::handlePoseGraph(const PoseGraph::ConstPtr& pose_graph) {
-  if (pose_graph->nodes.empty()) {
-    ROS_ERROR("Received empty pose graph!");
-    return;
-  }
-
-  std::unique_lock<std::mutex> lock(pose_graph_mutex_);
-  pose_graphs_.push_back(pose_graph);
-}
-
-void RosReconstruction::handleAgentNodeMeasurements(const PoseGraph::ConstPtr& msg) {
-  std::unique_lock<std::mutex> lock(pose_graph_mutex_);
-  agent_node_measurements_ = msg;
-}
-
-void RosReconstruction::dataSpin() {
+void InputModule::dataSpin() {
   while (!should_shutdown_) {
-    bool has_data = data_queue_->poll();
+    bool has_data = receiver_->queue.poll();
     if (!has_data) {
       continue;
     }
 
-    const auto packet = data_queue_->pop();
+    const auto packet = receiver_->queue.pop();
     const auto curr_time = packet->timestamp_ns;
-    VLOG(1) << "[Hydra Reconstruction] popped input @ " << curr_time << " [ns]";
+    VLOG(VLEVEL_TRACE) << "[ROS Input] popped input @ " << curr_time << " [ns]";
 
+    // TODO(nathan) can refactor out and move to non-ros
     ros::Time curr_ros_time;
     curr_ros_time.fromNSec(curr_time);
     const auto pose_status = lookupTransform(*buffer_,
@@ -135,9 +101,9 @@ void RosReconstruction::dataSpin() {
                                              HydraConfig::instance().getFrames().odom,
                                              HydraConfig::instance().getFrames().robot,
                                              5,  // max tries
-                                             config_.tf_wait_duration_s);
+                                             config.tf_wait_duration_s);
     if (!pose_status.is_valid) {
-      LOG(WARNING) << "[Hydra Reconstruction] dropping input @ " << curr_time
+      LOG(WARNING) << "[ROS Input] dropping input @ " << curr_time
                    << " [ns] due to missing pose";
       continue;
     }
@@ -147,13 +113,7 @@ void RosReconstruction::dataSpin() {
     input->sensor_input = packet;
     input->world_t_body = pose_status.target_p_source;
     input->world_R_body = pose_status.target_R_source;
-
-    {  // start pose graph critical section
-      std::unique_lock<std::mutex> lock(pose_graph_mutex_);
-      input->pose_graphs = pose_graphs_;
-      input->agent_node_measurements = agent_node_measurements_;
-      pose_graphs_.clear();
-    }
+    input->sensor = receiver_->sensor();
 
     queue_->push(input);
   }

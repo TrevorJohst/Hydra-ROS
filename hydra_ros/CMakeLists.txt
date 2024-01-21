@@ -63,14 +63,12 @@ add_library(
   src/backend/ros_backend.cpp
   src/backend/ros_backend_publisher.cpp
   src/common/hydra_ros_pipeline.cpp
+  src/common/input_config.cpp
+  src/common/input_module.cpp
   src/frontend/ros_frontend_publisher.cpp
-  src/loop_closure/ros_lcd_registration.cpp
-  src/reconstruction/data_receiver.cpp
   src/reconstruction/image_receiver.cpp
   src/reconstruction/pointcloud_adaptor.cpp
   src/reconstruction/pointcloud_receiver.cpp
-  src/reconstruction/ros_reconstruction.cpp
-  src/reconstruction/ros_reconstruction_config.cpp
   src/reconstruction/ros_sensors.cpp
   src/utils/dsg_streaming_interface.cpp
   src/utils/lookup_tf.cpp

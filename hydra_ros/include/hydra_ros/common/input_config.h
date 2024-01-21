@@ -33,57 +33,19 @@
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
 #pragma once
-#include <geometry_msgs/Pose.h>
-#include <hydra/reconstruction/reconstruction_module.h>
-#include <pose_graph_tools_msgs/PoseGraph.h>
-#include <ros/ros.h>
-#include <tf2_ros/transform_listener.h>
-
-#include "hydra_ros/reconstruction/data_receiver.h"
-#include "hydra_ros/reconstruction/ros_reconstruction_config.h"
+#include <config_utilities/virtual_config.h>
+#include <hydra/reconstruction/data_receiver.h>
 
 namespace hydra {
 
-class RosReconstruction : public ReconstructionModule {
- public:
-  using DataQueue = InputQueue<SensorInputPacket::Ptr>;
-
-  RosReconstruction(const RosReconstructionConfig& config,
-                    const OutputQueue::Ptr& output_queue);
-
-  virtual ~RosReconstruction();
-
-  std::string printInfo() const override;
-
-  void handlePoseGraph(const pose_graph_tools_msgs::PoseGraph::ConstPtr& pose_graph);
-
-  void handleAgentNodeMeasurements(const pose_graph_tools_msgs::PoseGraph::ConstPtr& msg);
-
- protected:
-  void dataSpin();
-
- protected:
-  const RosReconstructionConfig config_;
-  ros::NodeHandle nh_;
-
-  std::unique_ptr<DataReceiver> data_receiver_;
-  ros::Subscriber pose_graph_sub_;
-  ros::Subscriber agent_node_meas_sub_;
-  std::unique_ptr<tf2_ros::Buffer> buffer_;
-  std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
-
-  DataQueue::Ptr data_queue_;
-  std::unique_ptr<std::thread> data_thread_;
-
-  std::mutex pose_graph_mutex_;
-  std::list<pose_graph_tools_msgs::PoseGraph::ConstPtr> pose_graphs_;
-  pose_graph_tools_msgs::PoseGraph::ConstPtr agent_node_measurements_;
-
-  inline static const auto registration_ =
-      config::RegistrationWithConfig<ReconstructionModule,
-                                     RosReconstruction,
-                                     RosReconstructionConfig,
-                                     OutputQueue::Ptr>("RosReconstruction");
+struct InputConfig {
+  config::VirtualConfig<DataReceiver> receiver;
+  std::string ns = "~";
+  bool publish_pointcloud = false;
+  double tf_wait_duration_s = 0.1;
+  double tf_buffer_size_s = 30.0;
 };
+
+void declare_config(InputConfig& config);
 
 }  // namespace hydra

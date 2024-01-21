@@ -32,25 +32,20 @@
  * Government is authorized to reproduce and distribute reprints for Government
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
-#include "hydra_ros/reconstruction/data_receiver.h"
+#include "hydra_ros/common/input_config.h"
 
-#include <glog/logging.h>
+#include <config_utilities/config.h>
 
 namespace hydra {
 
-bool DataReceiver::checkInputTimestamp(const ros::Time& curr_time) {
-  if (last_time_received_) {
-    const auto separation_s = (curr_time - *last_time_received_).toSec();
-    if (separation_s < input_separation_s_) {
-      VLOG(15) << "[Data Receiver] Dropping input @ " << curr_time.toNSec()
-               << " [ns] with separation of " << separation_s << " [s]";
-      return false;
-    }
-  }
-
-  last_time_received_ = curr_time;
-  VLOG(5) << "[Data Receiver] Got ROS input @ " << curr_time.toNSec() << " [ns]";
-  return true;
+void declare_config(InputConfig& conf) {
+  using namespace config;
+  name("InputConfig");
+  field(conf.receiver, "receiver");
+  field(conf.ns, "ns");
+  field(conf.publish_pointcloud, "publish_pointcloud");
+  field(conf.tf_wait_duration_s, "tf_wait_duration_s");
+  field(conf.tf_buffer_size_s, "tf_buffer_size_s");
 }
 
 }  // namespace hydra

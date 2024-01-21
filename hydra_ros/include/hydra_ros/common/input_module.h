@@ -33,18 +33,55 @@
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
 #pragma once
-#include <hydra/loop_closure/registration.h>
+#include <hydra/common/input_queue.h>
+#include <hydra/common/module.h>
+#include <hydra/reconstruction/reconstruction_input.h>
+#include <ros/ros.h>
+#include <tf2_ros/transform_listener.h>
 
-namespace hydra::lcd {
+#include <thread>
 
-struct DsgAgentSolver : DsgRegistrationSolver {
-  DsgAgentSolver() = default;
+#include "hydra_ros/common/input_config.h"
 
-  virtual ~DsgAgentSolver() = default;
+namespace hydra {
 
-  RegistrationSolution solve(const DynamicSceneGraph& dsg,
-                             const DsgRegistrationInput& match,
-                             NodeId query_agent_id) const override;
+class InputModule : public Module {
+ public:
+  using OutputQueue = InputQueue<ReconstructionInput::Ptr>;
+
+  InputModule(const InputConfig& config, const OutputQueue::Ptr& output_queue);
+
+  virtual ~InputModule();
+
+  void start() override;
+
+  void stop() override;
+
+  void save(const LogSetup& log_setup) override;
+
+  std::string printInfo() const override;
+
+ protected:
+  void dataSpin();
+
+ public:
+  const InputConfig config;
+
+ protected:
+  ros::NodeHandle nh_;
+
+  OutputQueue::Ptr queue_;
+  std::atomic<bool> should_shutdown_{false};
+
+  std::unique_ptr<DataReceiver> receiver_;
+  std::unique_ptr<tf2_ros::Buffer> buffer_;
+  std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
+
+  std::unique_ptr<std::thread> data_thread_;
+
+  inline static const auto registration_ = config::
+      RegistrationWithConfig<InputModule, InputModule, InputConfig, OutputQueue::Ptr>(
+          "RosInput");
 };
 
-}  // namespace hydra::lcd
+}  // namespace hydra

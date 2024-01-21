@@ -38,17 +38,17 @@
 #include <config_utilities/parsing/ros.h>
 #include <config_utilities/printing.h>
 #include <config_utilities/validation.h>
+#include <hydra/backend/backend_module.h>
 #include <hydra/common/hydra_config.h>
 #include <hydra/frontend/frontend_module.h>
 #include <hydra/loop_closure/loop_closure_module.h>
+#include <hydra/reconstruction/reconstruction_module.h>
 
 #include <memory>
 
-#include "hydra_ros/backend/ros_backend.h"
 #include "hydra_ros/backend/ros_backend_publisher.h"
+#include "hydra_ros/common/input_module.h"
 #include "hydra_ros/frontend/ros_frontend_publisher.h"
-#include "hydra_ros/loop_closure/ros_lcd_registration.h"
-#include "hydra_ros/reconstruction/ros_reconstruction.h"
 #include "hydra_ros/visualizer/object_visualizer.h"
 #include "hydra_ros/visualizer/places_visualizer.h"
 #include "hydra_ros/visualizer/reconstruction_visualizer.h"
@@ -58,7 +58,6 @@ namespace hydra {
 void declare_config(HydraRosConfig& conf) {
   using namespace config;
   name("HydraRosConfig");
-  field(conf.use_ros_backend, "use_ros_backend");
   field(conf.enable_frontend_output, "enable_frontend_output");
   field(conf.visualize_objects, "visualize_objects");
   field(conf.visualize_places, "visualize_places");
@@ -79,14 +78,32 @@ void HydraRosPipeline::init() {
   const auto& pipeline_config = HydraConfig::instance().getConfig();
   initFrontend();
   initBackend();
-
-  if (pipeline_config.enable_reconstruction) {
-    initReconstruction();
-  }
-
+  initReconstruction();
   if (pipeline_config.enable_lcd) {
     initLCD();
   }
+
+  const auto reconstruction = getModule<ReconstructionModule>("reconstruction");
+  CHECK(reconstruction);
+  input_module_ = config::createFromROS<InputModule>(ros::NodeHandle(nh_, "input"),
+                                                     reconstruction->queue());
+}
+
+void HydraRosPipeline::start() {
+  VLOG(config_verbosity_) << std::endl << getModuleInfo("input", input_module_.get());
+
+  showModules();
+
+  input_module_->start();
+  for (auto&& [name, module] : modules_) {
+    if (!module) {
+      LOG(FATAL) << "Found unitialized module: " << name;
+    }
+
+    module->start();
+  }
+
+  modules_["input"] = input_module_;
 }
 
 void HydraRosPipeline::initFrontend() {
@@ -169,7 +186,6 @@ void HydraRosPipeline::initBackend() {
   // explict type for shared_ptr
   BackendModule::Ptr backend =
       config::createFromROS<BackendModule>(ros::NodeHandle(nh_, "backend"),
-                                           frontend_dsg_,
                                            backend_dsg_,
                                            shared_state_,
                                            HydraConfig::instance().getLogs());
@@ -190,18 +206,14 @@ void HydraRosPipeline::initBackend() {
 }
 
 void HydraRosPipeline::initReconstruction() {
-  InputQueue<ReconstructionOutput::Ptr>::Ptr frontend_queue;
-  if (modules_.count("frontend")) {
-    auto frontend = std::dynamic_pointer_cast<FrontendModule>(modules_.at("frontend"));
-    if (frontend) {
-      frontend_queue = frontend->getQueue();
-    } else {
-      LOG(ERROR) << "Invalid frontend module: disabling reconstruction output queue";
-    }
+  const auto frontend = getModule<FrontendModule>("frontend");
+  if (!frontend) {
+    LOG(ERROR) << "Invalid frontend module: disabling reconstruction output queue";
+    return;
   }
 
   ReconstructionModule::Ptr mod = config::createFromROS<ReconstructionModule>(
-      ros::NodeHandle(nh_, "reconstruction"), frontend_queue);
+      ros::NodeHandle(nh_, "reconstruction"), frontend->getQueue());
   modules_["reconstruction"] = mod;
 
   if (config_.visualize_reconstruction) {
@@ -217,29 +229,9 @@ void HydraRosPipeline::initReconstruction() {
 }
 
 void HydraRosPipeline::initLCD() {
-  auto lcd_config = config::fromRos<LoopClosureConfig>(nh_);
-  lcd_config.detector.num_semantic_classes = HydraConfig::instance().getTotalLabels();
-  VLOG(1) << "Number of classes for LCD: " << lcd_config.detector.num_semantic_classes;
-  config::checkValid(lcd_config);
-
   shared_state_->lcd_queue.reset(new InputQueue<LcdInput::Ptr>());
-  auto lcd =
-      std::make_shared<LoopClosureModule>(lcd_config, frontend_dsg_, shared_state_);
-  modules_["lcd"] = lcd;
-
-  bow_sub_ = nh_.subscribe("bow_vectors", 100, &HydraRosPipeline::bowCallback, this);
-  if (lcd_config.detector.enable_agent_registration) {
-    lcd->getDetector().setRegistrationSolver(0,
-                                             std::make_unique<lcd::DsgAgentSolver>());
-  }
-}
-
-void HydraRosPipeline::bowCallback(
-    const pose_graph_tools_msgs::BowQueries::ConstPtr& msg) {
-  for (const auto& query : msg->queries) {
-    shared_state_->visual_lcd_queue.push(pose_graph_tools_msgs::BowQuery::ConstPtr(
-        new pose_graph_tools_msgs::BowQuery(query)));
-  }
+  const ros::NodeHandle lcd_nh(nh_, "loop_closure");
+  modules_["lcd"] = config::createFromROS<LoopClosureModule>(lcd_nh, shared_state_);
 }
 
 }  // namespace hydra

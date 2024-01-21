@@ -47,10 +47,9 @@ using visualization_msgs::Marker;
 
 RosBackend::RosBackend(const BackendConfig& config,
                        const SharedDsgInfo::Ptr& dsg,
-                       const SharedDsgInfo::Ptr& backend_dsg,
                        const SharedModuleState::Ptr& state,
                        const LogSetup::Ptr& log_setup)
-    : BackendModule(config, dsg, backend_dsg, state, log_setup), nh_("~") {
+    : BackendModule(config, dsg, state, log_setup), nh_("~") {
   pose_graph_sub_ = nh_.subscribe(
       "pose_graph_incremental", 10000, &RosBackend::poseGraphCallback, this);
 
@@ -86,5 +85,24 @@ void RosBackend::inputCallback(const KimeraPgmoMesh::ConstPtr& mesh,
 void RosBackend::poseGraphCallback(const PoseGraph::ConstPtr& msg) {
   pose_graph_queue_.push_back(msg);
 }
+
+// TODO(nathan) re-enable forcing distributed optimization priors
+
+/*void RosReconstruction::handleAgentNodeMeasurements(const PoseGraph::ConstPtr& msg)
+ * {*/
+/*std::unique_lock<std::mutex> lock(pose_graph_mutex_);*/
+/*agent_node_measurements_ = msg;*/
+/*}*/
+
+/*{  // start pose graph critical section*/
+/*std::unique_lock<std::mutex> lock(pose_graph_mutex_);*/
+/*input->agent_node_measurements = agent_node_measurements_;*/
+/*}*/
+
+/*agent_node_meas_sub_ =*/
+/*nh_.subscribe("agent_node_measurements",*/
+/*1,*/
+/*&RosReconstruction::handleAgentNodeMeasurements,*/
+// this);
 
 }  // namespace hydra
