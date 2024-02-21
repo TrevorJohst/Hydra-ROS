@@ -52,6 +52,12 @@ visualization_msgs::Marker makeDeleteMarker(const std_msgs::Header& header,
                                             size_t id,
                                             const std::string& ns);
 
+void fillCornersFromBbox(const BoundingBox& bbox, Eigen::MatrixXf& corners);
+
+void addWireframeToMarker(const Eigen::MatrixXf& corners,
+                          const std_msgs::ColorRGBA& color,
+                          visualization_msgs::Marker& marker);
+
 visualization_msgs::Marker makeLayerWireframeBoundingBoxes(
     const std_msgs::Header& header,
     const LayerConfig& config,
