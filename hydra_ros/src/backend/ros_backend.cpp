@@ -45,7 +45,7 @@ using mesh_msgs::TriangleMeshStamped;
 using pose_graph_tools_msgs::PoseGraph;
 using visualization_msgs::Marker;
 
-RosBackend::RosBackend(const BackendConfig& config,
+RosBackend::RosBackend(const Config& config,
                        const SharedDsgInfo::Ptr& dsg,
                        const SharedModuleState::Ptr& state,
                        const LogSetup::Ptr& log_setup)
@@ -64,7 +64,7 @@ RosBackend::~RosBackend() {}
 
 std::string RosBackend::printInfo() const {
   std::stringstream ss;
-  ss << config::toString(config_);
+  ss << config::toString(config);
   return ss.str();
 }
 

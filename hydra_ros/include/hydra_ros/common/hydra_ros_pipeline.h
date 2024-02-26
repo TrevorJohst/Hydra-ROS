@@ -34,19 +34,12 @@
  * -------------------------------------------------------------------------- */
 #pragma once
 #include <hydra/common/hydra_pipeline.h>
-#include <hydra_msgs/QueryFreespace.h>
 #include <ros/ros.h>
 
 namespace hydra {
 
 struct HydraRosConfig {
-  bool use_ros_backend = false;
   bool enable_frontend_output = true;
-  bool visualize_objects = false;
-  bool visualize_places = false;
-  std::string places_visualizer_namespace = "~";
-  bool visualize_reconstruction = false;
-  std::string reconstruction_visualizer_namespace = "~";
 };
 
 void declare_config(HydraRosConfig& conf);
@@ -59,9 +52,6 @@ class HydraRosPipeline : public HydraPipeline {
 
   void start() override;
 
-  bool handleFreespaceSrv(hydra_msgs::QueryFreespace::Request& req,
-                          hydra_msgs::QueryFreespace::Response& res);
-
   void init() override;
 
  protected:
@@ -73,8 +63,6 @@ class HydraRosPipeline : public HydraPipeline {
  protected:
   const HydraRosConfig config_;
   ros::NodeHandle nh_;
-
-  ros::ServiceServer freespace_server_;
 
   Module::Ptr input_module_;
 };
