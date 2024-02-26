@@ -58,6 +58,11 @@ void addWireframeToMarker(const Eigen::MatrixXf& corners,
                           const std_msgs::ColorRGBA& color,
                           visualization_msgs::Marker& marker);
 
+void addEdgesToCorners(const Eigen::MatrixXf& corners,
+                       const geometry_msgs::Point& node_centroid,
+                       const std_msgs::ColorRGBA& color,
+                       visualization_msgs::Marker& marker);
+
 visualization_msgs::Marker makeLayerWireframeBoundingBoxes(
     const std_msgs::Header& header,
     const LayerConfig& config,
