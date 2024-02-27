@@ -134,6 +134,7 @@ void fillOccupancy(const OccupancyPublisher::Config& config,
         const size_t index = r * msg.info.width + c;
         if (!isObserved(voxel, config.min_observation_weight)) {
           msg.data[index] = -1;
+          continue;
         }
 
         const auto occupied = getDistance(voxel) < config.min_distance;
