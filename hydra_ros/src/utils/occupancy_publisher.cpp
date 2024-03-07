@@ -112,14 +112,14 @@ void fillOccupancy(const OccupancyPublisher::Config& config,
 
   const Eigen::Vector2f dims = (x_max - x_min) / layer.voxel_size();
   msg.info.resolution = layer.voxel_size();
-  msg.info.width = std::ceil(dims.x() / layer.voxel_size());
-  msg.info.height = std::ceil(dims.y() / layer.voxel_size());
+  msg.info.width = std::ceil(dims.x());
+  msg.info.height = std::ceil(dims.y());
   msg.info.origin.position.x = x_min.x();
   msg.info.origin.position.y = x_min.y();
   msg.info.origin.position.z = height;
   msg.info.origin.orientation.w = 1.0;
 
-  msg.data.resize(msg.info.width * msg.info.height);
+  msg.data.resize(msg.info.width * msg.info.height, -1);
   for (const auto& idx : matching_blocks) {
     const auto& block = layer.getBlockByIndex(idx);
     for (size_t x = 0; x < block.voxels_per_side(); ++x) {
