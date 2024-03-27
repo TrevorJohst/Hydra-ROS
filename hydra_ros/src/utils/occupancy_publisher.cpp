@@ -37,6 +37,7 @@
 #include <config_utilities/config.h>
 #include <config_utilities/parsing/ros.h>
 #include <config_utilities/printing.h>
+#include <config_utilities/types/eigen_matrix.h>
 #include <config_utilities/validation.h>
 #include <hydra/common/hydra_config.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -71,16 +72,52 @@ bool isObserved<places::GvdVoxel>(const places::GvdVoxel& voxel, float) {
   return voxel.observed;
 }
 
+struct Bounds {
+  Eigen::Vector2f x_min = Eigen::Vector2f::Constant(std::numeric_limits<float>::max());
+  Eigen::Vector2f x_max =
+      Eigen::Vector2f::Constant(std::numeric_limits<float>::lowest());
+  Eigen::Vector2f dims = Eigen::Vector2f::Zero();
+};
+
 template <typename T>
-void fillOccupancy(const OccupancyPublisher::Config& config,
-                   const Layer<T>& layer,
-                   const Eigen::Isometry3d& world_T_sensor,
-                   nav_msgs::OccupancyGrid& msg) {
-  auto height = config.slice_height;
-  if (config.use_relative_height) {
-    height += world_T_sensor.translation().z();
+Bounds getLayerBounds(const Layer<T>& layer) {
+  Bounds bounds;
+  voxblox::BlockIndexList blocks;
+  layer.getAllAllocatedBlocks(&blocks);
+  for (const auto& idx : blocks) {
+    const auto& block = layer.getBlockByIndex(idx);
+    const auto lower = block.origin();
+    const auto upper = lower + Eigen::Vector3f::Constant(block.block_size());
+    bounds.x_min = bounds.x_min.array().min(lower.template head<2>().array());
+    bounds.x_max = bounds.x_max.array().max(upper.template head<2>().array());
   }
 
+  bounds.dims = (bounds.x_max - bounds.x_min) / layer.voxel_size();
+  return bounds;
+}
+
+template <typename T>
+void initGrid(const Layer<T>& layer,
+              const Bounds& bounds,
+              double height,
+              nav_msgs::OccupancyGrid& msg) {
+  msg.info.resolution = layer.voxel_size();
+  msg.info.width = std::ceil(bounds.dims.x());
+  msg.info.height = std::ceil(bounds.dims.y());
+  msg.info.origin.position.x = bounds.x_min.x();
+  msg.info.origin.position.y = bounds.x_min.y();
+  msg.info.origin.position.z = height;
+  msg.info.origin.orientation.w = 1.0;
+  msg.data.resize(msg.info.width * msg.info.height, -1);
+}
+
+template <typename T>
+void fillOccupancySlice(const OccupancyPublisher::Config& config,
+                        const Layer<T>& layer,
+                        const Eigen::Isometry3d& world_T_sensor,
+                        const Bounds& bounds,
+                        double height,
+                        nav_msgs::OccupancyGrid& msg) {
   const voxblox::Point slice_pos(0, 0, height);
   const auto slice_index = layer.computeBlockIndexFromCoordinates(slice_pos);
   const auto origin =
@@ -98,28 +135,11 @@ void fillOccupancy(const OccupancyPublisher::Config& config,
     }
   }
 
-  Eigen::Vector2f x_min = Eigen::Vector2f::Constant(std::numeric_limits<float>::max());
-  Eigen::Vector2f x_max =
-      Eigen::Vector2f::Constant(std::numeric_limits<float>::lowest());
+  auto bbox = config.add_robot_footprint
+                  ? BoundingBox(config.footprint_min, config.footprint_max)
+                  : BoundingBox();
+  const Eigen::Isometry3f sensor_T_world = world_T_sensor.inverse().cast<float>();
 
-  for (const auto& idx : matching_blocks) {
-    const auto& block = layer.getBlockByIndex(idx);
-    const auto lower = block.origin();
-    const auto upper = lower + Eigen::Vector3f::Constant(block.block_size());
-    x_min = x_min.array().min(lower.template head<2>().array());
-    x_max = x_max.array().max(upper.template head<2>().array());
-  }
-
-  const Eigen::Vector2f dims = (x_max - x_min) / layer.voxel_size();
-  msg.info.resolution = layer.voxel_size();
-  msg.info.width = std::ceil(dims.x());
-  msg.info.height = std::ceil(dims.y());
-  msg.info.origin.position.x = x_min.x();
-  msg.info.origin.position.y = x_min.y();
-  msg.info.origin.position.z = height;
-  msg.info.origin.orientation.w = 1.0;
-
-  msg.data.resize(msg.info.width * msg.info.height, -1);
   for (const auto& idx : matching_blocks) {
     const auto& block = layer.getBlockByIndex(idx);
     for (size_t x = 0; x < block.voxels_per_side(); ++x) {
@@ -127,19 +147,59 @@ void fillOccupancy(const OccupancyPublisher::Config& config,
         const voxblox::VoxelIndex voxel_index(x, y, grid_index.z());
         const auto& voxel = block.getVoxelByVoxelIndex(voxel_index);
         const Eigen::Vector3f pos = block.computeCoordinatesFromVoxelIndex(voxel_index);
-        const auto rel_pos = pos.head<2>() - x_min;
+        const auto rel_pos = pos.head<2>() - bounds.x_min;
         // pos is center point, so we want floor
         const auto r = std::floor(rel_pos.y() / layer.voxel_size());
         const auto c = std::floor(rel_pos.x() / layer.voxel_size());
         const size_t index = r * msg.info.width + c;
+
+        if (config.add_robot_footprint &&
+            bbox.isInside((sensor_T_world * pos).eval())) {
+          msg.data[index] = 0;
+          continue;
+        }
+
         if (!isObserved(voxel, config.min_observation_weight)) {
-          msg.data[index] = -1;
+          msg.data[index] = -2;
           continue;
         }
 
         const auto occupied = getDistance(voxel) < config.min_distance;
-        msg.data[index] = occupied ? 100 : 0;
+        if (occupied) {
+          msg.data[index] = 100;
+          continue;
+        }
+
+        if (msg.data[index] == -1) {
+          // we only can mark cells as free if they haven't been touched
+          msg.data[index] = 0;
+        }
       }
+    }
+  }
+}
+
+template <typename T>
+void fillOccupancy(const OccupancyPublisher::Config& config,
+                   const Layer<T>& layer,
+                   const Eigen::Isometry3d& world_T_sensor,
+                   nav_msgs::OccupancyGrid& msg) {
+  const auto bounds = getLayerBounds(layer);
+  auto height = config.slice_height;
+  if (config.use_relative_height) {
+    height += world_T_sensor.translation().z();
+  }
+
+  initGrid(layer, bounds, height, msg);
+  for (size_t i = 0; i < config.num_slices; ++i) {
+    const auto curr_height = height + i * layer.voxel_size();
+    fillOccupancySlice(config, layer, world_T_sensor, bounds, curr_height, msg);
+  }
+
+  // clean up all cells that were marked unobserved
+  for (size_t i = 0; i < msg.data.size(); ++i) {
+    if (msg.data[i] == -2) {
+      msg.data[i] = -1;
     }
   }
 }
@@ -149,8 +209,12 @@ void declare_config(OccupancyPublisher::Config& config) {
   name("OccupancyPublisher::Config");
   field(config.use_relative_height, "use_relative_height");
   field(config.slice_height, "slice_height", "m");
+  field(config.num_slices, "num_slices");
   field(config.min_observation_weight, "min_observation_weight");
   field(config.min_distance, "min_distance");
+  field(config.add_robot_footprint, "add_robot_footprint");
+  field(config.footprint_min, "footprint_min");
+  field(config.footprint_max, "footprint_max");
 }
 
 OccupancyPublisher::OccupancyPublisher(const Config& config, const ros::NodeHandle& nh)

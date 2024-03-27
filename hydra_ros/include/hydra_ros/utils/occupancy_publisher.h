@@ -48,8 +48,12 @@ class OccupancyPublisher {
   struct Config {
     bool use_relative_height = true;
     double slice_height = 0.0;
+    size_t num_slices = 1;
     double min_observation_weight = 1.0e-6;
     double min_distance = 0.3;
+    bool add_robot_footprint = false;
+    Eigen::Vector3f footprint_min;
+    Eigen::Vector3f footprint_max;
   } const config;
 
   OccupancyPublisher(const Config& config, const ros::NodeHandle& nh);
