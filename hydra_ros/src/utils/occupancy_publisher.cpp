@@ -251,7 +251,7 @@ void OccupancyPublisher::publishGvd(uint64_t timestamp_ns,
 }
 
 TsdfOccupancyPublisher::TsdfOccupancyPublisher(const Config& config)
-    : pub_(OccupancyPublisher(config.extraction, ros::NodeHandle(config.ns))) {}
+    : config(config), pub_(OccupancyPublisher(config.extraction, ros::NodeHandle(config.ns))) {}
 
 GvdOccupancyPublisher::GvdOccupancyPublisher(const Config& config)
     : pub_(OccupancyPublisher(config.extraction, ros::NodeHandle(config.ns))) {}
@@ -260,7 +260,64 @@ void TsdfOccupancyPublisher::call(uint64_t timestamp_ns,
                                   const Eigen::Isometry3d& world_T_sensor,
                                   const voxblox::Layer<voxblox::TsdfVoxel>& tsdf,
                                   const ReconstructionOutput&) const {
-  pub_.publishTsdf(timestamp_ns, world_T_sensor, tsdf);
+  if (!config.collate) {
+    pub_.publishTsdf(timestamp_ns, world_T_sensor, tsdf);
+    return;
+  }
+
+  auto height = config.extraction.slice_height;
+  if (config.extraction.use_relative_height) {
+    height += world_T_sensor.translation().z();
+  }
+
+  if (!tsdf_) {
+    tsdf_.reset(new voxblox::Layer<voxblox::TsdfVoxel>(tsdf.voxel_size(),
+                                                       tsdf.voxels_per_side()));
+  }
+
+  std::set<size_t> z_indices;
+  for (size_t i = 0; i < config.extraction.num_slices; ++i) {
+    const auto curr_height = height + i * tsdf.voxel_size();
+    const voxblox::Point slice_pos(0, 0, curr_height);
+    const auto slice_index = tsdf.computeBlockIndexFromCoordinates(slice_pos);
+    z_indices.insert(slice_index.z());
+  }
+
+  voxblox::BlockIndexList blocks;
+  tsdf.getAllAllocatedBlocks(&blocks);
+
+  voxblox::BlockIndexList matching_blocks;
+  for (const auto& idx : blocks) {
+    if (z_indices.count(idx.z())) {
+      matching_blocks.push_back(idx);
+    }
+  }
+
+  for (const auto& idx : matching_blocks) {
+    const auto& block = *CHECK_NOTNULL(tsdf.getBlockPtrByIndex(idx));
+    bool unobserved = true;
+    for (size_t i = 0; i < block.num_voxels(); ++i) {
+      if (block.getVoxelByLinearIndex(i).weight > config.extraction.min_observation_weight) {
+        unobserved = false;
+        break;
+      }
+    }
+
+    if (unobserved) {
+      continue;
+    }
+
+    auto new_block = tsdf_->allocateBlockPtrByIndex(idx);
+    new_block->has_data() = block.has_data();
+    new_block->updated() = block.updated();
+    for (size_t i = 0; i < block.num_voxels(); ++i) {
+      const auto& voxel = block.getVoxelByLinearIndex(i);
+      if (voxel.weight > config.extraction.min_observation_weight){
+        new_block->getVoxelByLinearIndex(i) = voxel;
+      }
+    }
+  }
+  pub_.publishTsdf(timestamp_ns, world_T_sensor, *tsdf_);
 }
 
 void GvdOccupancyPublisher::call(uint64_t timestamp_ns,
@@ -282,6 +339,7 @@ void declare_config(TsdfOccupancyPublisher::Config& config) {
   name("TsdfOccupancyPublisher::Config");
   field(config.ns, "ns");
   field(config.extraction, "extraction");
+  field(config.collate, "collate");
 }
 
 }  // namespace hydra

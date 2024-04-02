@@ -78,6 +78,7 @@ class TsdfOccupancyPublisher : public ReconstructionModule::Sink {
   struct Config {
     std::string ns = "~tsdf";
     OccupancyPublisher::Config extraction;
+    bool collate = false;
   } const config;
 
   explicit TsdfOccupancyPublisher(const Config& config);
@@ -91,6 +92,7 @@ class TsdfOccupancyPublisher : public ReconstructionModule::Sink {
 
  private:
   OccupancyPublisher pub_;
+  mutable voxblox::Layer<voxblox::TsdfVoxel>::Ptr tsdf_;
 
   inline static const auto registration_ =
       config::RegistrationWithConfig<ReconstructionModule::Sink,
