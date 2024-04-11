@@ -18,14 +18,15 @@
   <depend>hydra_msgs</depend>
   <depend>image_transport</depend>
   <depend>kimera_pgmo</depend>
+  <depend>rosbag</depend>
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
   <depend>tf2_eigen</depend>
   <depend>tf2_ros</depend>
-
   <depend>pose_graph_tools</depend>
   <depend>pose_graph_tools_ros</depend>
   <depend>pose_graph_tools_msgs</depend>
+  <depend>protobuf-dev</depend>
   <depend>visualization_msgs</depend>
 
   <exec_depend>image_proc</exec_depend>

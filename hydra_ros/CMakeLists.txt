@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(OpenCV REQUIRED COMPONENTS core imgproc)
 find_package(hydra REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common)
+find_package(Protobuf REQUIRED)
 find_package(
   catkin REQUIRED
   COMPONENTS cv_bridge
@@ -17,6 +18,7 @@ find_package(
              hydra_msgs
              image_transport
              kimera_pgmo
+             rosbag
              roscpp
              std_msgs
              tf2_eigen
@@ -45,6 +47,7 @@ catkin_package(
   hydra_msgs
   image_transport
   kimera_pgmo
+  rosbag
   roscpp
   std_msgs
   tf2_eigen
@@ -53,7 +56,7 @@ catkin_package(
   pose_graph_tools
   pose_graph_tools_ros
   pose_graph_tools_msgs
-  DEPENDS hydra PCL OpenCV
+  DEPENDS hydra PCL OpenCV Protobuf
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
 )
@@ -73,11 +76,13 @@ add_library(
   src/reconstruction/pointcloud_receiver.cpp
   src/reconstruction/reconstruction_visualizer.cpp
   src/reconstruction/ros_sensors.cpp
+  src/utils/bag_reader.cpp
   src/utils/dsg_streaming_interface.cpp
   src/utils/ear_clipping.cpp
   src/utils/lookup_tf.cpp
   src/utils/node_utilities.cpp
   src/utils/occupancy_publisher.cpp
+  src/utils/pose_cache.cpp
   src/visualizer/basis_point_plugin.cpp
   src/visualizer/colormap_utilities.cpp
   src/visualizer/config_manager.cpp
@@ -128,6 +133,9 @@ target_link_libraries(rotate_tf_node PUBLIC ${catkin_LIBRARIES})
 add_executable(scene_graph_logger_node src/nodes/scene_graph_logger_node.cpp)
 target_link_libraries(scene_graph_logger_node ${PROJECT_NAME})
 
+add_executable(reconstruct_mesh app/reconstruct_mesh.cpp)
+target_link_libraries(reconstruct_mesh ${PROJECT_NAME} ${Protobuf_LIBRARIES})
+
 if(CATKIN_ENABLE_TESTING)
   add_subdirectory(tests)
 endif()
@@ -141,6 +149,7 @@ install(
           mesh_publisher_node
           rotate_tf_node
           scene_graph_logger_node
+          reconstruct_mesh
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
