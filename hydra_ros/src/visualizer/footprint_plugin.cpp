@@ -72,7 +72,11 @@ void declare_config(FootprintPluginConfig& config) {
   field(config.mesh_alpha, "mesh_alpha");
   field(config.footprint_radius, "footprint_radius");
   field(config.num_samples, "num_samples");
+  field(config.z_offset, "z_offset");
   field<LayerIdConversion>(config.layer_id, "layer_id");
+  config.color.setOptional();
+  field(config.color, "color");
+  field(config.color_ns, "color_ns");
 
   check(config.line_width, GT, 0.0, "line_width");
   check(config.line_alpha, GT, 0.0, "line_alpha");
@@ -80,7 +84,8 @@ void declare_config(FootprintPluginConfig& config) {
 
 FootprintPlugin::FootprintPlugin(const ros::NodeHandle& nh, const std::string& name)
     : DsgVisualizerPlugin(nh, name),
-      config(config::checkValid(config::fromRos<FootprintPluginConfig>(nh_))) {
+      config(config::checkValid(config::fromRos<FootprintPluginConfig>(nh_))),
+      color_adaptor_(config.color.create(config.color_ns)) {
   // namespacing gives us a reasonable topic
   pub_ = nh_.advertise<visualization_msgs::MarkerArray>("", 1, true);
 }
@@ -130,15 +135,16 @@ void FootprintPlugin::draw(const ConfigManager&,
     }
   }
 
+  color_adaptor_->setGraph(graph);
   const auto& layer = graph.getLayer(config.layer_id);
   for (auto&& [id, node] : layer.nodes()) {
-    const auto mean_z = getMeanNeighborHeight(layer, *node);
-    const auto& attrs = node->attributes<SemanticNodeAttributes>();
+    const auto mean_z = getMeanNeighborHeight(layer, *node) + config.z_offset;
 
+    const auto node_color = color_adaptor_->getColor(graph, *node);
     std_msgs::ColorRGBA color;
-    color.r = attrs.color.x() / 255.0;
-    color.g = attrs.color.y() / 255.0;
-    color.b = attrs.color.z() / 255.0;
+    color.r = node_color.x() / 255.0;
+    color.g = node_color.y() / 255.0;
+    color.b = node_color.z() / 255.0;
     color.a = config.line_alpha;
 
     double radius = config.footprint_radius;
@@ -175,6 +181,10 @@ void FootprintPlugin::reset(const std_msgs::Header& header, const DynamicSceneGr
   namespaces_.clear();
 
   pub_.publish(msg);
+}
+
+void FootprintPlugin::setColorAdaptor(const ColorAdaptor::Ptr& colors) {
+  color_adaptor_ = colors;
 }
 
 }  // namespace hydra

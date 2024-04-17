@@ -168,9 +168,9 @@ void DynamicSceneGraphVisualizer::setGraph(const DynamicSceneGraph::Ptr& scene_g
   need_redraw_ = true;
 }
 
-void DynamicSceneGraphVisualizer::setLayerColorFunction(LayerId layer,
-                                                        const ColorFunction& func) {
-  layer_colors_[layer] = func;
+void DynamicSceneGraphVisualizer::setLayerColorFunction(
+    LayerId layer, const ColorAdaptor::Ptr& adaptor) {
+  layer_colors_[layer] = adaptor;
 }
 
 inline double getDynamicHue(const DynamicLayerConfig& config, char prefix) {
@@ -314,11 +314,6 @@ void DynamicSceneGraphVisualizer::resetImpl(const std_msgs::Header& header,
 
 void DynamicSceneGraphVisualizer::redrawImpl(const std_msgs::Header& header,
                                              MarkerArray& msg) {
-  // this is janky, figure out how to do this better
-  for (const auto& callback : callbacks_) {
-    callback(scene_graph_);
-  }
-
   const auto& visualizer_config = config_manager_->getVisualizerConfig();
   for (auto&& [layer_id, layer] : scene_graph_->layers()) {
     const auto layer_config = config_manager_->getLayerConfig(layer_id);
@@ -498,7 +493,11 @@ void DynamicSceneGraphVisualizer::drawLayer(const std_msgs::Header& header,
   ColorFunction layer_color_func;
   auto iter = layer_colors_.find(layer.id);
   if (iter != layer_colors_.end()) {
-    layer_color_func = iter->second;
+    iter->second->setGraph(*scene_graph_);
+    const auto adaptor_ptr = iter->second.get();
+    layer_color_func = [this, adaptor_ptr](const SceneGraphNode& node) -> NodeColor {
+      return adaptor_ptr->getColor(*scene_graph_, node);
+    };
   } else {
     const auto curr_mode = static_cast<NodeColorMode>(config.marker_color_mode);
     switch (curr_mode) {
@@ -533,7 +532,8 @@ void DynamicSceneGraphVisualizer::drawLayer(const std_msgs::Header& header,
     }
   }
 
-  auto nodes = makeCentroidMarkers(header, config, layer, viz_config, node_ns, layer_color_func);
+  auto nodes =
+      makeCentroidMarkers(header, config, layer, viz_config, node_ns, layer_color_func);
   addMultiMarkerIfValid(nodes, msg);
 
   const std::string edge_ns = getLayerEdgeNamespace(layer.id);

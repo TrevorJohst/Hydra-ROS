@@ -32,57 +32,66 @@
  * Government is authorized to reproduce and distribute reprints for Government
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
-#pragma once
-#include <config_utilities/virtual_config.h>
-#include <std_srvs/SetBool.h>
-
 #include "hydra_ros/visualizer/color_adaptors.h"
-#include "hydra_ros/visualizer/dsg_visualizer_plugin.h"
+
+#include <config_utilities/config.h>
+#include <config_utilities/types/eigen_matrix.h>
+#include <hydra/common/dsg_types.h>
 
 namespace hydra {
 
-class SemanticColorMap;
+void declare_config(NodeColorAdaptor::Config& config) {
+  using namespace config;
+  name("NodeColorAdaptor::Config");
+  field(config.default_color, "default_color");
+}
 
-struct FootprintPluginConfig {
-  bool use_place_radius = false;
-  bool draw_boundaries = true;
-  bool draw_boundary_vertices = false;
-  double line_width = 0.1;
-  double line_alpha = 0.8;
-  double mesh_alpha = 0.6;
-  double footprint_radius = 0.5;
-  size_t num_samples = 100;
-  double z_offset = 0.0;
-  LayerId layer_id = DsgLayers::PLACES;
-  config::VirtualConfig<ColorAdaptor> color{NodeColorAdaptor::Config(),
-                                            "NodeColorAdaptor"};
-  std::string color_ns = "";
-};
+NodeColorAdaptor::NodeColorAdaptor(const Config& config, const std::string&)
+    : config(config) {}
 
-class FootprintPlugin : public DsgVisualizerPlugin {
- public:
-  FootprintPlugin(const ros::NodeHandle& nh, const std::string& name);
+NodeColor NodeColorAdaptor::getColor(const DynamicSceneGraph&,
+                                     const SceneGraphNode& node) const {
+  try {
+    return node.attributes<SemanticNodeAttributes>().color;
+  } catch (const std::bad_cast&) {
+    return config.default_color;
+  }
+}
 
-  virtual ~FootprintPlugin();
+ParentColorAdaptor::ParentColorAdaptor(const Config&, const std::string&) {}
 
-  void draw(const ConfigManager& configs,
-            const std_msgs::Header& header,
-            const DynamicSceneGraph& graph) override;
+NodeColor ParentColorAdaptor::getColor(const DynamicSceneGraph& graph,
+                                       const SceneGraphNode& node) const {
+  auto parent = node.getParent();
+  if (!parent) {
+    return NodeColor::Zero();
+  }
 
-  void reset(const std_msgs::Header& header, const DynamicSceneGraph& graph) override;
+  return graph.getNode(*parent)
+      .value()
+      .get()
+      .attributes<SemanticNodeAttributes>()
+      .color;
+}
 
-  void setColorAdaptor(const ColorAdaptor::Ptr& colors);
+void declare_config(ParentColorAdaptor::Config&) {
+  using namespace config;
+  name("ParentColorAdaptor::Config");
+}
 
-  const FootprintPluginConfig config;
+ActiveColorAdaptor::ActiveColorAdaptor(const Config& config, const std::string&)
+    : config(config) {}
 
- protected:
-  ros::Publisher pub_;
-  std::set<std::string> namespaces_;
-  ColorAdaptor::Ptr color_adaptor_;
+NodeColor ActiveColorAdaptor::getColor(const DynamicSceneGraph&,
+                                       const SceneGraphNode& node) const {
+  return node.attributes().is_active ? config.active_color : config.inactive_color;
+}
 
-  inline static const auto registration_ = config::
-      Registration<DsgVisualizerPlugin, FootprintPlugin, ros::NodeHandle, std::string>(
-          "FootprintPlugin");
-};
+void declare_config(ActiveColorAdaptor::Config& config) {
+  using namespace config;
+  name("ActiveColorAdaptor::Config");
+  field(config.active_color, "active_color");
+  field(config.inactive_color, "inactive_color");
+}
 
 }  // namespace hydra

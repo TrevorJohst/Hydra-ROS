@@ -41,6 +41,7 @@
 #include <vector>
 
 #include "hydra_ros/visualizer/config_manager.h"
+#include "hydra_ros/visualizer/color_adaptors.h"
 #include "hydra_ros/visualizer/dsg_visualizer_plugin.h"
 #include "hydra_ros/visualizer/visualizer_types.h"
 #include "hydra_ros/visualizer/visualizer_utilities.h"
@@ -84,12 +85,7 @@ class DynamicSceneGraphVisualizer {
 
   DynamicSceneGraph::Ptr getGraph() const { return scene_graph_; }
 
-  void setLayerColorFunction(LayerId layer, const ColorFunction& func);
-
-  void addUpdateCallback(
-      const std::function<void(const DynamicSceneGraph::Ptr&)>& func) {
-    callbacks_.push_back(func);
-  }
+  void setLayerColorFunction(LayerId layer, const ColorAdaptor::Ptr& adaptor);
 
  protected:
   virtual void resetImpl(const std_msgs::Header& header, MarkerArray& msg);
@@ -178,8 +174,7 @@ class DynamicSceneGraphVisualizer {
   bool periodic_redraw_;
   std::string visualizer_frame_;
   DynamicSceneGraph::Ptr scene_graph_;
-  std::map<LayerId, ColorFunction> layer_colors_;
-  std::list<std::function<void(const DynamicSceneGraph::Ptr&)>> callbacks_;
+  std::map<LayerId, ColorAdaptor::Ptr> layer_colors_;
 
   const std::string node_ns_prefix_ = "layer_nodes_";
   const std::string edge_ns_prefix_ = "layer_edges_";

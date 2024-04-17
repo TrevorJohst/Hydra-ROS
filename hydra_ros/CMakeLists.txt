@@ -85,6 +85,7 @@ add_library(
   src/utils/pose_cache.cpp
   src/visualizer/basis_point_plugin.cpp
   src/visualizer/colormap_utilities.cpp
+  src/visualizer/color_adaptors.cpp
   src/visualizer/config_manager.cpp
   src/visualizer/dynamic_scene_graph_visualizer.cpp
   src/visualizer/gt_region_plugin.cpp
