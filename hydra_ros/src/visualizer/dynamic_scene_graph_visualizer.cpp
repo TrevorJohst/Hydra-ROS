@@ -547,7 +547,7 @@ void DynamicSceneGraphVisualizer::drawLayer(const std_msgs::Header& header,
   for (const auto& id_node_pair : layer.nodes()) {
     const Node& node = *id_node_pair.second;
 
-    if (config.use_label) {
+    if (config.use_label && !node.attributes<SemanticNodeAttributes>().name.empty()) {
       Marker label = makeTextMarker(header, config, node, viz_config, label_ns);
       msg.markers.push_back(label);
       curr_labels_.at(layer.id).insert(node.id);
