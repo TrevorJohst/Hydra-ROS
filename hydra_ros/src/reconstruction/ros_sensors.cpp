@@ -109,7 +109,7 @@ RosIntrinsicsRegistration::RosIntrinsicsRegistration(const std::string& name) {
   ConfigFactory<Sensor>::addEntry<RosCameraIntrinsics::Config>(name);
   ModuleMapBase<std::function<Sensor*(const YAML::Node&)>>::addEntry(
       name,
-      [&name](const YAML::Node& data) -> Camera* {
+      [name](const YAML::Node& data) -> Camera* {
         if (name == "camera_info") {
           RosCameraIntrinsics::Config config;
           config::internal::Visitor::setValues(config, data);
