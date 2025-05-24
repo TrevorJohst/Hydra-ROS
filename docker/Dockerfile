@@ -1,7 +1,4 @@
-# ros2-dev/Dockerfile
-#notes:
-# - run this on host machine: xhost +local:root
-
+#hydra-dev/Dockerfile
 FROM osrf/ros:jazzy-desktop
 
 #required to skip interactive prompts
@@ -20,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     ros-dev-tools \
     && rm -rf /var/lib/apt/lists/*
 
-#hydra dependencies
+#dependencies
 RUN apt-get update && apt-get install -y \
     nlohmann-json3-dev \
     libgoogle-glog-dev \
@@ -34,20 +31,20 @@ RUN apt-get update && apt-get install -y pipx && \
     echo 'export PATH=$PATH:/root/.local/bin' >> /root/.bashrc && \
     rm -rf /var/lib/apt/lists/*
 
-#copy source to a temp directory for rosdep
-# COPY hydra_ws/src/ /tmp/deps/src/
+#copy source for rosdep
 COPY ../../../src/ /tmp/deps/src/
 
-#run rosdep install on the copied packages
+#run rosdep install on the copied source
 RUN apt-get update && rosdep update && \
     rosdep install --from-paths /tmp/deps/src --ignore-src -r -y && \
     rm -rf /var/lib/apt/lists/*
 
-#setup ros2 workspace (mounted from host)
+#setup workspace (mounted from host)
 WORKDIR /root/hydra_ws
 
-#run source ros2
+#source ros2 and workspace
 RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc
+RUN echo "source /root/hydra_ws/install/setup.bash" >> /root/.bashrc
 
 #alias to install dependecies (shouldn't be needed)
 RUN echo "alias setup_deps='cd /root/hydra_ws && sudo apt update && rosdep install --from-paths src --ignore-src -r -y'" >> /root/.bashrc

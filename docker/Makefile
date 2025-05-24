@@ -13,7 +13,7 @@ shell:
 	docker compose exec ros2-dev bash
 
 #start the container in detached mode (runs in background) to keep container
-#running persistently
+#running 
 up:
 	docker compose up -d
 
@@ -29,8 +29,7 @@ start:
 down:
 	docker compose down
 
-#remove all stopped containers from your system
+#remove all unused containers from your system
 clean:
 	docker container prune -f
 	docker image prune -f
-	docker network prune -f
