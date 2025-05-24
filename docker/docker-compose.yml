@@ -1,0 +1,23 @@
+# ros2-dev/docker-compose.yml
+version: "3.8"
+
+services:
+  ros2-dev:
+    image: hydra-dev
+    build:
+      context: ../../..
+      dockerfile: src/hydra_ros/docker/Dockerfile
+      network: host
+    container_name: hydra-dev
+    volumes:
+      - ../../../:/root/hydra_ws
+      - ${DATASETS_PATH}:/root/data
+    network_mode: host
+    environment:
+      - DISPLAY=$DISPLAY
+      - QT_X11_NO_MITSHM=1
+    devices:
+      - /dev/dri
+    privileged: true
+    stdin_open: true
+    tty: true
