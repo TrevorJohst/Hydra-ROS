@@ -6,14 +6,13 @@ build:
 
 #start one-time interactive container, auto-removed when exit
 run:
-	docker compose run --rm ros2-dev bash
+	docker compose run --rm hydra-dev bash
 
-#attach a shell to the running container (must already be ran via `up`)
+#attach a shell to the running container (must already be ran via up)
 shell:
-	docker compose exec ros2-dev bash
+	docker compose exec hydra-dev bash
 
-#start the container in detached mode (runs in background) to keep container
-#running 
+#start the container in detached mode to keep container running 
 up:
 	docker compose up -d
 

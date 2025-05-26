@@ -2,20 +2,25 @@
 version: "3.8"
 
 services:
-  ros2-dev:
+  hydra-dev:
     image: hydra-dev
     build:
       context: ../../..
       dockerfile: src/hydra_ros/docker/Dockerfile
       network: host
     container_name: hydra-dev
+    runtime: nvidia
     volumes:
       - ../../../:/root/hydra_ws
       - ${DATASETS_PATH}:/root/data
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /dev:/dev 
     network_mode: host
     environment:
       - DISPLAY=$DISPLAY
       - QT_X11_NO_MITSHM=1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all 
     devices:
       - /dev/dri
     privileged: true
