@@ -1,18 +1,19 @@
-#hydra-dev/docker-compose.yml
+# hydra_ros/docker/zed/docker-compose.yml
+# Docker compose for Hydra w/ZED SDK, TensorRT for ROS2
 version: "3.8"
 
 services:
-  hydra-dev:
-    image: hydra-dev
+  hydra-zed:
+    image: hydra-zed
     build:
-      context: ../../..
-      dockerfile: src/hydra_ros/docker/Dockerfile
+      context: ../../../..
+      dockerfile: src/hydra_ros/docker/zed/Dockerfile
       network: host
-    container_name: hydra-dev
+    container_name: hydra-zed
     runtime: nvidia
     volumes:
       - ../../../:/root/hydra_ws
-      - ${DATASETS_PATH}:/root/data
+      - ${DATASETS_PATH:-/root/empty_data}:/root/data
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /dev:/dev 
     network_mode: host

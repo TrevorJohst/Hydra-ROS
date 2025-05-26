@@ -1,34 +1,54 @@
-.PHONY: build run shell up stop start down clean
+.PHONY: build run up shell stop start down clean check-profile check-env
 
-#build the docker image defined in docker-compose.yml
-build:
-	docker compose build
+#check profile for selecting docker-compose file
+check-profile:
+	@if [ -z "$(PROFILE)" ]; then \
+		echo "PROFILE not set."; \
+		echo "Please specify which Docker profile to use. For example:"; \
+		echo "  make build PROFILE=minimal"; \
+		exit 1; \
+	fi
+
+#check if .env file exists and if DATASETS_PATH is set
+check-env:
+	@if [ ! -f .env ]; then \
+		echo "Warning: .env file not found. DATASETS_PATH will default to /root/empty_data."; \
+	else \
+		grep -q '^DATASETS_PATH=' .env || echo "DATASETS_PATH not set in .env. Using default fallback."; \
+	fi
+
+DOCKER_DIR := $(PROFILE)
+SERVICE_NAME := hydra-$(PROFILE)
+
+#build the selected image
+build: check-profile check-env
+	docker compose --env-file .env -f $(DOCKER_DIR)/docker-compose.yml build
 
 #start one-time interactive container, auto-removed when exit
-run:
-	docker compose run --rm hydra-dev bash
-
-#attach a shell to the running container (must already be ran via up)
-shell:
-	docker compose exec hydra-dev bash
+run: check-profile check-env
+	docker compose --env-file .env -f $(DOCKER_DIR)/docker-compose.yml run --rm $(SERVICE_NAME) bash
 
 #start the container in detached mode to keep container running 
-up:
-	docker compose up -d
+up: check-profile check-env
+	docker compose --env-file .env -f $(DOCKER_DIR)/docker-compose.yml up -d
 
-#stop the running the container started via up
-stop:
-	docker compose stop
+#attach a shell to the running container (must already be ran via up)
+shell: check-profile check-env
+	docker compose --env-file .env -f $(DOCKER_DIR)/docker-compose.yml exec $(SERVICE_NAME) bash
+
+#stop the running the container
+stop: check-profile check-env
+	docker compose --env-file .env -f $(DOCKER_DIR)/docker-compose.yml stop
 
 #restart a container that was stopped
-start:
-	docker compose start
+start: check-profile check-env
+	docker compose --env-file .env -f $(DOCKER_DIR)/docker-compose.yml start
 
 #stop and remove everything created by up
-down:
-	docker compose down
+down: check-profile check-env
+	docker compose --env-file .env -f $(DOCKER_DIR)/docker-compose.yml down
 
-#remove all unused containers from your system
-clean:
+#remove all unused containers
+clean: check-profile check-env
 	docker container prune -f
 	docker image prune -f
