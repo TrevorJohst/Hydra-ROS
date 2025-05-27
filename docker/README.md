@@ -15,9 +15,9 @@ This directory contains multiple Docker configurations for building and running 
   - TensorRT
 
 ## Quick Start (minimal)
-The following instructions will guide you through setting up and running Hydra using Docker with the `minimal` profile. You can replace `minimal` with `zed` in the commands below to use the ZED profile instead.
+The following instructions will guide you through setting up and running Hydra using Docker with the `minimal` profile.
 
-Before starting, export the `WORKSPACE` environment variable to point to your Hydra workspace directory (e.g., `export WORKSPACE=~/hydra_ws`. This is only needed for copying the commands in the quick start.
+Before starting, export the `WORKSPACE` environment variable to point to your Hydra workspace directory (e.g., `export WORKSPACE=~/hydra_ws`). This is only needed for copy/pasting the commands in the quick start.
 
 ### Host (minimal)
 Before using Docker, make sure to:
@@ -44,7 +44,7 @@ Before using Docker, make sure to:
     grep -q '^DATASETS_PATH=' .env || echo 'DATASETS_PATH=/path/to/your/datasets' >> .env
     ```
 
-> :information_source: **Note**</br>
+> :grey_exclamation: **Note**</br>
 > If running the minimal profile, you can run Hydra on the uhumans2 dataset. Download the ROS 1 bag for the office scene [here](https://drive.google.com/file/d/1awAzQ7R1hdS5O1Z2zOcpYjK7F4_APq_p/view?usp=drive_link). The ROS 1 bag will need to be converted to ROS 2 bag.
 
 ### Container (minimal)
@@ -83,7 +83,7 @@ ros2 bag play /root/data/path/to/rosbag --clock --qos-profile-overrides-path ~/.
 ```
 
 > **:warning: Warning**<br> 
-> You must convert the ROS 1 bag to a ROS 2 bag before playing it. The `rosbags-convert` tool is preinstalled in the container, and you can use it to convert the bag using the following command: `rosbags-convert --src path/to/office.bag --dst path/to/office`. You should run this in the container if you don't `rosbags-convert` installed on your host machine.
+> You must convert the ROS 1 bag to a ROS 2 bag before playing it. The `rosbags-convert` tool is preinstalled in the container, and you can use it to convert the bag using the following command: `rosbags-convert --src path/to/office.bag --dst path/to/office`. You should run this in the container if you don't have `rosbags-convert` installed on your host machine.
 
 ## Quick Start (zed)
 
@@ -97,7 +97,7 @@ cd $WORKSPACE/src
 git clone https://github.com/stereolabs/zed-ros2-wrapper.git
 ```
 
-2. Download the default [pretrained model](https://drive.google.com/file/d/1XRcsyLSvqqhqNIaOI_vmqpUpmBT6gk9-/view?usp=drive_link) for semantic segmentation to the directory `$WORKSPACE/.models/`
+2. While the uhumans2 dataset has pre-segmented images, you must run semantic segmentation on the images. Download the default [pretrained model](https://drive.google.com/file/d/1XRcsyLSvqqhqNIaOI_vmqpUpmBT6gk9-/view?usp=drive_link) to the directory `$WORKSPACE/.models/`.
 
 3. (optional) To avoid re-optimizing the model when running the container, set the `ZED_CACHE` environment variable to mount a host directory for the zed cache:
 
@@ -134,5 +134,4 @@ The Makefile supports the following commands:
 | `make down`   | Stops and removes a container                         |
 | `make clean`  | Prunes unused containers and images                   |
 
-> :information_source: **Note**</br>
-> If you don't want to type `PROFILE=...` every time, you can set the `PROFILE` environment variable in your shell via `export PROFILE=...`. This will make the Makefile use that profile by default.
+You must specify the profile you want to use by setting the `PROFILE` variable when running the commands (e.g., `make build PROFILE=minimal`). If you don't want to type `PROFILE=...` every time, you can set the `PROFILE` environment variable in your shell via `export PROFILE=...`. This will make the Makefile use that profile by default.
