@@ -44,7 +44,7 @@ Before using Docker, make sure to:
     grep -q '^DATASETS_PATH=' .env || echo 'DATASETS_PATH=/path/to/your/datasets' >> .env
     ```
 
-3. If running the minimal profile, you can run Hydra on the uhumans2 dataset. Download the ROS 1 bag for the office scene [here](https://drive.google.com/file/d/1awAzQ7R1hdS5O1Z2zOcpYjK7F4_APq_p/view?usp=drive_link). The ROS 1 bag will need to be converted to ROS 2 bag.
+3. If running the minimal profile, you can run Hydra on the uhumans2 dataset. Download the ROS 1 bag for the office scene [here](https://drive.google.com/file/d/1awAzQ7R1hdS5O1Z2zOcpYjK7F4_APq_p/view?usp=drive_link). The ROS 1 bag will need to be converted to ROS 2 bag (see below).
 
 ### Container (minimal)
 1. Build the image and run the container for the `minimal` profile:
@@ -64,6 +64,7 @@ source install/setup.bash
 ros2 launch hydra_ros uhumans2.launch.yaml
 ```
 
+
 > **:warning: Warning**<br> 
 > If you encounter graphical issues (e.g. rviz not displaying), make sure you run `xhost +local:root` on the host machine and that `DISPLAY` is correctly set.
 
@@ -80,6 +81,7 @@ Before playing the bag, make sure to create an override for latching static tf t
 echo "/tf_static: {depth: 1, durability: transient_local}" > ~/.tf_overrides.yaml
 ros2 bag play /root/data/path/to/rosbag --clock --qos-profile-overrides-path ~/.tf_overrides.yaml
 ```
+
 
 > **:warning: Warning**<br> 
 > You must convert the ROS 1 bag to a ROS 2 bag before playing it. The `rosbags-convert` tool is preinstalled in the container, and you can use it to convert the bag using the following command: `rosbags-convert --src path/to/office.bag --dst path/to/office`. You should run this in the container if you don't have `rosbags-convert` installed on your host machine.
@@ -132,6 +134,7 @@ The Makefile supports the following commands:
 | `make start`  | Starts a stopped container                            |
 | `make down`   | Stops and removes a container                         |
 | `make clean`  | Prunes unused containers and images                   |
+
 
 > :grey_exclamation: **Note**</br>
 > You must specify the profile you want to use by setting the `PROFILE` variable when running the commands (e.g., `make build PROFILE=minimal`). If you don't want to type `PROFILE=<profile>` every time, you can set the `PROFILE` environment variable in your shell via `export PROFILE=<profile>`. This will make the Makefile use that profile by default.
