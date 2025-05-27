@@ -1,7 +1,5 @@
 # hydra_ros/docker/minimal/docker-compose.yml
-# Docker compose for Hydra with minimal setup for ROS2
-version: "3.8"
-
+# Docker compose for Hydra with minimal setup for ROS 2
 services:
   hydra-minimal:
     image: hydra-minimal
@@ -11,7 +9,7 @@ services:
       network: host
     container_name: hydra-minimal
     volumes:
-      - ../../../:/root/hydra_ws
+      - ../../../../:/root/hydra_ws
       - ${DATASETS_PATH:-/root/empty_data}:/root/data
     network_mode: host
     environment:

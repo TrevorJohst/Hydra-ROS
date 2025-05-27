@@ -1,11 +1,11 @@
 # Docker Profiles
 
-This folder contains multiple Docker configurations for building and running Hydra. 
+This directory contains multiple Docker configurations for building and running Hydra. 
 
 ## Profiles
 
 - **`minimal`** (no GPU support):
-  - ROS2 Jazzy
+  - ROS 2 Jazzy
   - Basic ROS dev tools and C++ dependencies
 - **`zed`**:
   - ROS 2 Jazzy
@@ -14,17 +14,19 @@ This folder contains multiple Docker configurations for building and running Hyd
   - ZED SDK
   - TensorRT
 
-## Quick Start
+## Quick Start (minimal)
 The following instructions will guide you through setting up and running Hydra using Docker with the `minimal` profile. You can replace `minimal` with `zed` in the commands below to use the ZED profile instead.
 
-### Host
+Before starting, export the `WORKSPACE` environment variable to point to your Hydra workspace directory (e.g., `export WORKSPACE=~/hydra_ws`. This is only needed for copying the commands in the quick start.
+
+### Host (minimal)
 Before using Docker, make sure to:
 
 1. Setup your workspace:
 
     ```shell
-    mkdir -p ~/hydra_ws/src
-    cd ~/hydra_ws
+    mkdir -p $WORKSPACE/src
+    cd $WORKSPACE
     echo "build: {cmake-args: [--no-warn-unused-cli, -DCMAKE_BUILD_TYPE=Release, -DCONFIG_UTILS_ENABLE_ROS=OFF]}" > colcon_defaults.yaml
 
     cd src
@@ -35,21 +37,21 @@ Before using Docker, make sure to:
 > :warning: **Warning**</br>
 > In the `vcs import` step, GitHub may block too many concurrent requests. If you receive `kex_exchange_identification: read: Connection reset by peer` errors, try running `vcs import . < hydra/install/hydra.rosinstall --workers 1`.
 
-2. You can skip this step if you are not running Hydra against a dataset. Download the ROS1 bag for the uhumans2 office scene [here](https://drive.google.com/file/d/1awAzQ7R1hdS5O1Z2zOcpYjK7F4_APq_p/view?usp=drive_link) and setup your dataset path (this only needs to be done once):
+2. You can skip this step if you are not running Hydra against a dataset; otherwise, setup your dataset path (this only needs to be done once):
 
     ```shell
-    cd ~/hydra_ws/src/hydra_ros/docker
-    echo 'DATASETS_PATH=/path/to/your/datasets' > .env
+    cd $WORKSPACE/src/hydra_ros/docker
+    grep -q '^DATASETS_PATH=' .env || echo 'DATASETS_PATH=/path/to/your/datasets' >> .env
     ```
 
 > :information_source: **Note**</br>
-> If running the minimal profile, you can run Hydra on the uhumans2 dataset. Download the ROS1 bag for the office scene [here](https://drive.google.com/file/d/1awAzQ7R1hdS5O1Z2zOcpYjK7F4_APq_p/view?usp=drive_link). The ROS1 bag will need to be converted to ROS2 bag (see below).
+> If running the minimal profile, you can run Hydra on the uhumans2 dataset. Download the ROS 1 bag for the office scene [here](https://drive.google.com/file/d/1awAzQ7R1hdS5O1Z2zOcpYjK7F4_APq_p/view?usp=drive_link). The ROS 1 bag will need to be converted to ROS 2 bag.
 
-### Container
+### Container (minimal)
 1. Build the image and run the container for the `minimal` profile:
 
 ```shell
-cd ~/hydra_ws/src/hydra_ros/docker
+cd $WORKSPACE/src/hydra_ros/docker
 make build PROFILE=minimal
 make up PROFILE=minimal
 make shell PROFILE=minimal
@@ -69,7 +71,7 @@ ros2 launch hydra_ros uhumans2.launch.yaml
 2. In a separate terminal, open another shell in the container:
 
 ```bash
-cd ~/hydra_ws/src/hydra_ros/docker
+cd $WORKSPACE/src/hydra_ros/docker
 make shell PROFILE=minimal
 ```
 
@@ -78,6 +80,41 @@ Before playing the bag, make sure to create an override for latching static tf t
 ```bash
 echo "/tf_static: {depth: 1, durability: transient_local}" > ~/.tf_overrides.yaml
 ros2 bag play /root/data/path/to/rosbag --clock --qos-profile-overrides-path ~/.tf_overrides.yaml
+```
+
+> **:warning: Warning**<br> 
+> You must convert the ROS 1 bag to a ROS 2 bag before playing it. The `rosbags-convert` tool is preinstalled in the container, and you can use it to convert the bag using the following command: `rosbags-convert --src path/to/office.bag --dst path/to/office`. You should run this in the container if you don't `rosbags-convert` installed on your host machine.
+
+## Quick Start (zed)
+
+### Host (zed)
+You can repeat the steps above using the `zed` profile instead of `minimal`, but you must complete a few additional steps on the host to run with hardware. 
+
+1. Add the `zed-ros2-wrapper` to your workspace (the dependencies will be installed via the dockerfile):
+
+```shell
+cd $WORKSPACE/src
+git clone https://github.com/stereolabs/zed-ros2-wrapper.git
+```
+
+2. Download the default [pretrained model](https://drive.google.com/file/d/1XRcsyLSvqqhqNIaOI_vmqpUpmBT6gk9-/view?usp=drive_link) for semantic segmentation to the directory `$WORKSPACE/.models/`
+
+3. (optional) To avoid re-optimizing the model when running the container, set the `ZED_CACHE` environment variable to mount a host directory for the zed cache:
+
+```shell
+mkdir -p "$WORKSPACE/.zed_cache"
+
+cd $WORKSPACE/src/hydra_ros/docker
+grep -q '^ZED_CACHE=' .env || echo "ZED_CACHE=$WORKSPACE/.zed_cache" >> .env
+```
+### Container (zed)
+
+Once inside the container, you can build and run Hydra for the zed profile (you should already be in /root/hydra_ws when opening the shell):
+
+```shell
+colcon build --symlink-install --continue-on-error
+source install/setup.bash
+ros2 launch hydra_ros hydra_zed.launch.yaml
 ```
 
 ---

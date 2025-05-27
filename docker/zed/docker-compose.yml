@@ -1,7 +1,5 @@
 # hydra_ros/docker/zed/docker-compose.yml
-# Docker compose for Hydra w/ZED SDK, TensorRT for ROS2
-version: "3.8"
-
+# Docker compose for Hydra w/ZED SDK, TensorRT for ROS 2
 services:
   hydra-zed:
     image: hydra-zed
@@ -12,8 +10,9 @@ services:
     container_name: hydra-zed
     runtime: nvidia
     volumes:
-      - ../../../:/root/hydra_ws
+      - ../../../../:/root/hydra_ws
       - ${DATASETS_PATH:-/root/empty_data}:/root/data
+      # - ${ZED_CACHE:-/tmp/zed_data}:/root/.local/share/zed
       - /tmp/.X11-unix:/tmp/.X11-unix
       - /dev:/dev 
     network_mode: host
