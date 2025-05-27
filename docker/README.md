@@ -56,7 +56,7 @@ make up PROFILE=minimal
 make shell PROFILE=minimal
 ```
 
-Once inside the container, you can build and run Hydra (you should already be in /root/hydra_ws when opening the shell):
+Once inside the container, you can build and run Hydra (you should already be in `/root/hydra_ws` when opening the shell):
 
 ```bash
 colcon build --symlink-install --continue-on-error
@@ -110,7 +110,7 @@ grep -q '^ZED_CACHE=' .env || echo "ZED_CACHE=$WORKSPACE/.zed_cache" >> .env
 ```
 ### Container (zed)
 
-Once inside the container, you can build and run Hydra for the zed profile (you should already be in /root/hydra_ws when opening the shell):
+Once inside the container, you can build and run Hydra for the zed profile (you should already be in `/root/hydra_ws` when opening the shell):
 
 ```shell
 colcon build --symlink-install --continue-on-error
