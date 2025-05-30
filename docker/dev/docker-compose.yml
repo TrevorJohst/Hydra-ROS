@@ -1,13 +1,13 @@
-# hydra_ros/docker/a1/docker-compose.yml
-# Docker compose for Hydra with a1 setup for ROS 2
+# hydra_ros/docker/dev/docker-compose.yml
+# Docker compose for Hydra with development setup for ROS 2
 services:
-  hydra-a1:
-    image: hydra-a1
+  hydra-dev:
+    image: hydra-dev
     build:
       context: ../../../..
-      dockerfile: src/hydra_ros/docker/a1/Dockerfile
+      dockerfile: src/hydra_ros/docker/dev/Dockerfile
       network: host
-    container_name: hydra-a1
+    container_name: hydra-dev
     volumes:
       - ../../../../:/root/hydra_ws
       - ${DATASETS_PATH:-/root/empty_data}:/root/data

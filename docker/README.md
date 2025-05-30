@@ -7,7 +7,7 @@ This directory contains multiple Docker configurations for building and running 
 - **`minimal`** (no GPU support):
   - ROS 2 Jazzy
   - Basic ROS dev tools and C++ dependencies
-- **`a1`**:
+- **`dev`**:
   - ROS 2 Jazzy
   - Basic ROS dev tools and C++ dependencies
   - CUDA 12.8
@@ -134,7 +134,7 @@ mkdir -p "$WORKSPACE/.zed_cache"
 cd $WORKSPACE/src/hydra_ros/docker
 grep -q '^ZED_CACHE=' .env || echo "ZED_CACHE=$WORKSPACE/.zed_cache" >> .env
 ```
-### Container (zed)
+### Container (dev)
 
 Once inside the container, you can build and run Hydra for the zed profile (you should already be in `/root/hydra_ws` when opening the shell):
 
@@ -144,10 +144,10 @@ source install/setup.bash
 ros2 launch hydra_ros hydra_zed.launch.yaml
 ```
 
-## Quick Start (a1)
-To run with a bag recorded on the A1 sensor payload (e.g., D455/T265), you can use the `a1` profile. You can simply run Hydra along with the bag.
+## Quick Start (dev)
+To run with a bag (e.g., recorded with the sensor payload on the `A1` with the D455/T265), you can use the `dev` profile. You can simply run Hydra along with the bag.
 
-1. Run the `A1` launch script for Hydra:
+1. Run the `a1` launch script for Hydra:
 ```bash
 ros2 launch hydra_ros a1.launch.yaml use_sim_time:=true
 ```
@@ -157,4 +157,4 @@ ros2 launch hydra_ros a1.launch.yaml use_sim_time:=true
 ros2 bag play /path/to/bag --clock --exclude-topics /tf_static
 ```
 > :grey_exclamation: **Note**</br>
-> The static tfs are included in the launch script, so you should exclude them when playing the bag.
+> The static tfs are included in the launch script for the `a1`, so you should exclude them when playing the bag.
