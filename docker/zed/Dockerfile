@@ -1,4 +1,5 @@
-# Base image with ZED SDK 5.0, CUDA 12.6, and Ubuntu 24.04
+# Base image with ZED SDK 5.0, CUDA 12.8, and Ubuntu 24.04
+# (while the image name says 12.6, the image appears to have 12.8)
 FROM stereolabs/zed:5.0-gl-devel-cuda12.6-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -14,6 +15,7 @@ RUN apt-get update && \
     echo "deb http://packages.ros.org/ros2/ubuntu noble main" > /etc/apt/sources.list.d/ros2.list && \
     apt-get update && \
     apt-get install -y ros-${ROS_DISTRO}-desktop python3-rosdep python3-colcon-common-extensions && \
+    apt-get install -y ros-${ROS_DISTRO}-depth-image-proc ros-${ROS_DISTRO}-rqt-tf-tree \
     rm -rf /var/lib/apt/lists/*
 
 RUN rosdep init && rosdep update
@@ -28,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     tmux \
     vim \
+    htop \
     net-tools \
     ros-dev-tools \
     nlohmann-json3-dev \

@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     tmux \
     vim \
+    htop \
     net-tools \
     ros-dev-tools \
     && rm -rf /var/lib/apt/lists/*
