@@ -14,6 +14,27 @@ This directory contains multiple Docker configurations for building and running 
   - ZED SDK
   - TensorRT
 
+## Commands
+
+The Makefile supports the following commands:
+
+| Command       | Description                                            |
+|---------------|--------------------------------------------------------|
+| `make build`  | Builds the selected profile (must set `PROFILE=...`)  |
+| `make run`    | Runs an interactive container (auto-removed)          |
+| `make up`     | Runs container in background                          |
+| `make shell`  | Opens a shell inside a running container              |
+| `make stop`   | Stops a running container                             |
+| `make start`  | Starts a stopped container                            |
+| `make down`   | Stops and removes a container                         |
+| `make clean`  | Prunes unused containers and images                   |
+
+
+> :grey_exclamation: **Note**</br>
+> You must specify the profile you want to use by setting the `PROFILE` variable when running the commands (e.g., `make build PROFILE=minimal`). If you don't want to type `PROFILE=<profile>` every time, you can set the `PROFILE` environment variable in your shell via `export PROFILE=<profile>`. This will make the Makefile use that profile by default.
+
+---
+
 ## Quick Start (minimal)
 The following instructions will guide you through setting up and running Hydra using Docker with the `minimal` profile.
 
@@ -119,7 +140,7 @@ ros2 launch hydra_ros hydra_zed.launch.yaml
 ```
 
 ## Quick Start (a1)
-To run with a bag recorded on the A1 sensor payload (e.g., D455/T265), you can use the `zed` profile. You can simply run Hydra along with the bag.
+To run with a bag recorded on the A1 sensor payload (e.g., D455/T265), you can use the `a1` profile. You can simply run Hydra along with the bag.
 
 1. Run the `A1` launch script for Hydra:
 ```bash
@@ -132,24 +153,3 @@ ros2 bag play /path/to/bag --clock --exclude-topics /tf_static
 ```
 > :grey_exclamation: **Note**</br>
 > The static tfs are included in the launch script, so you should exclude them when playing the bag.
-
----
-
-## Commands
-
-The Makefile supports the following commands:
-
-| Command       | Description                                            |
-|---------------|--------------------------------------------------------|
-| `make build`  | Builds the selected profile (must set `PROFILE=...`)  |
-| `make run`    | Runs an interactive container (auto-removed)          |
-| `make up`     | Runs container in background                          |
-| `make shell`  | Opens a shell inside a running container              |
-| `make stop`   | Stops a running container                             |
-| `make start`  | Starts a stopped container                            |
-| `make down`   | Stops and removes a container                         |
-| `make clean`  | Prunes unused containers and images                   |
-
-
-> :grey_exclamation: **Note**</br>
-> You must specify the profile you want to use by setting the `PROFILE` variable when running the commands (e.g., `make build PROFILE=minimal`). If you don't want to type `PROFILE=<profile>` every time, you can set the `PROFILE` environment variable in your shell via `export PROFILE=<profile>`. This will make the Makefile use that profile by default.
