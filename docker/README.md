@@ -118,6 +118,21 @@ source install/setup.bash
 ros2 launch hydra_ros hydra_zed.launch.yaml
 ```
 
+## Quick Start (a1)
+To run with a bag recorded on the A1 sensor payload (e.g., D455/T265), you can use the `zed` profile. You can simply run Hydra along with the bag.
+
+1. Run the `A1` launch script for Hydra:
+```bash
+ros2 launch hydra_ros a1.launch.yaml use_sim_time:=true
+```
+
+2. Run the bag:
+```bash
+ros2 bag play /path/to/bag --clock --exclude-topics /tf_static
+```
+> :grey_exclamation: **Note**</br>
+> The static tfs are included in the launch script, so you should exclude them when playing the bag.
+
 ---
 
 ## Commands
