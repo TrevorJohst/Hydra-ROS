@@ -145,7 +145,7 @@ ros2 launch hydra_ros hydra_zed.launch.yaml
 ```
 
 ## Quick Start (dev)
-To run with a bag (e.g., recorded with the sensor payload on the `A1` with the D455/T265), you can use the `dev` profile. You can simply run Hydra along with the bag.
+To run with a bag, you can use the `dev` profile. For example, to run Hydra against a bag recored with the `a1` sensor payload with the D455/T265 configuration, you can run the following:
 
 1. Run the `a1` launch script for Hydra:
 ```bash
