@@ -7,6 +7,11 @@ This directory contains multiple Docker configurations for building and running 
 - **`minimal`** (no GPU support):
   - ROS 2 Jazzy
   - Basic ROS dev tools and C++ dependencies
+- **`a1`**:
+  - ROS 2 Jazzy
+  - Basic ROS dev tools and C++ dependencies
+  - CUDA 12.8
+  - TensorRT
 - **`zed`**:
   - ROS 2 Jazzy
   - Basic ROS dev tools and C++ dependencies
