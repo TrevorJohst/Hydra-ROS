@@ -1,4 +1,13 @@
-.PHONY: build run up shell stop start down clean check-profile check-env
+.PHONY: build run up shell stop start down clean profiles check-profile check-env
+
+#list available profiles
+profiles:
+	@echo "Available profiles:"
+	@find . -maxdepth 1 -type d ! -name "." | while read dir; do \
+		if [ -f "$$dir/docker-compose.yml" ]; then \
+			echo "  $$(basename $$dir)"; \
+		fi; \
+	done
 
 #check profile for selecting docker-compose file
 check-profile:
