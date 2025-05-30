@@ -1,0 +1,22 @@
+# hydra_ros/docker/a1/docker-compose.yml
+# Docker compose for Hydra with a1 setup for ROS 2
+services:
+  hydra-a1:
+    image: hydra-a1
+    build:
+      context: ../../../..
+      dockerfile: src/hydra_ros/docker/a1/Dockerfile
+      network: host
+    container_name: hydra-a1
+    volumes:
+      - ../../../../:/root/hydra_ws
+      - ${DATASETS_PATH:-/root/empty_data}:/root/data
+    network_mode: host
+    environment:
+      - DISPLAY=$DISPLAY
+      - QT_X11_NO_MITSHM=1
+    devices:
+      - /dev/dri
+    privileged: true
+    stdin_open: true
+    tty: true
