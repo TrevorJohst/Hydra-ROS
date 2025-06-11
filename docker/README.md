@@ -3,7 +3,7 @@
 This directory contains multiple profiles for Docker configurations to build and run Hydra.
 
 ## Requirements
-This was tested on Ubuntu 20.04. You will need `git`, `make`, and `vcstool` as well as [docker](https://docs.docker.com/engine/install/ubuntu/) (you may need to run `sudo usermod -aG docker $USER`, `newgrp docker` after installing docker) and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the profiles with GPU support (you may need to run `sudo systemctl restart docker` after installing the toolkit). 
+You will need `git`, `make`, and `vcstool` as well as [docker](https://docs.docker.com/engine/install/ubuntu/) (you may need to run `sudo usermod -aG docker $USER`, `newgrp docker` after installing docker) and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the profiles with GPU support (you may need to run `sudo systemctl restart docker` after installing the toolkit). 
 
 ## Profiles
 
