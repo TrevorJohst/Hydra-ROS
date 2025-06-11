@@ -148,7 +148,7 @@ ros2 launch hydra_ros zed2i.launch.yaml
 ```
 
 ## Quick Start (dev)
-In general, you can start from the `dev` profile for development with Hydra if using Docker with your own software/hardware. For example, to run Hydra against a bag recored with the `a1` sensor payload with the D455/T265 configuration (refer to this [launch](hydra_ros/launch/datasets/a1.launch.yaml) and [config](hydra_ros/config/datasets/a1.yaml) for this setup), you can run the following:
+In general, you can start from the `dev` profile for development with Hydra if using Docker with your own software/hardware. For example, to run Hydra against a bag recorded with the `a1` sensor payload with the D455/T265 configuration (refer to this [launch](hydra_ros/launch/datasets/a1.launch.yaml) and [config](hydra_ros/config/datasets/a1.yaml) for this setup), you can run the following:
 
 1. Run the `a1` launch script for Hydra:
 ```bash
