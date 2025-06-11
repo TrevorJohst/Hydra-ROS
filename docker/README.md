@@ -60,7 +60,9 @@ Before using Docker, make sure to:
 
     cd src
     git clone https://github.com/MIT-SPARK/Hydra-ROS.git hydra_ros
-    vcs import . < hydra_ros/install/ros2_docker.yaml
+
+    #replace ros2.yaml with ros2_docker.yaml to use https
+    vcs import . < hydra_ros/install/ros2.yaml
     ```
 
 > :warning: **Warning**</br>
@@ -127,7 +129,7 @@ cd $WORKSPACE/src
 git clone https://github.com/stereolabs/zed-ros2-wrapper.git
 ```
 
-2. While the uhumans2 dataset has pre-segmented images, you must run semantic segmentation on the images. You can use [semantic_inference](https://github.com/MIT-SPARK/semantic_inference). Download the default [pretrained model](https://drive.google.com/file/d/1XRcsyLSvqqhqNIaOI_vmqpUpmBT6gk9-/view?usp=drive_link) to the directory `$WORKSPACE/.models/`.
+2. While the uhumans2 dataset has pre-segmented images, you must run semantic segmentation on the images. You can use [semantic_inference](https://github.com/MIT-SPARK/semantic_inference), which should already be installed via `ros2.yaml`. Download the default [pretrained model](https://drive.google.com/file/d/1XRcsyLSvqqhqNIaOI_vmqpUpmBT6gk9-/view?usp=drive_link) to the directory `$WORKSPACE/.models/`.
 
 3. (optional) To avoid re-optimizing the model when running the container, set the `ZED_CACHE` environment variable to mount a host directory for the zed cache:
 
