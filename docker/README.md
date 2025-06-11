@@ -66,7 +66,7 @@ Before using Docker, make sure to:
 > :warning: **Warning**</br>
 > In the `vcs import` step, GitHub may block too many concurrent requests. If you receive `kex_exchange_identification: read: Connection reset by peer` errors, try running `vcs import . < hydra/install/hydra.rosinstall --workers 1`.
 
-2. You can skip this step if you are not running Hydra against a dataset; otherwise, setup your dataset path (this only needs to be done once):
+2. You can skip this step if you do not need to mount a dataset path from the host; otherwise, setup your dataset path (this only needs to be done once):
 
     ```shell
     cd $WORKSPACE/src/hydra_ros/docker
