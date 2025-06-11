@@ -22,8 +22,10 @@ check-profile:
 check-env:
 	@if [ ! -f .env ]; then \
 		echo "Warning: .env file not found. DATASETS_PATH will default to /root/empty_data."; \
+		echo "DATASETS_PATH=/root/empty_data" > .env; \
 	else \
 		grep -q '^DATASETS_PATH=' .env || echo "DATASETS_PATH not set in .env. Using default fallback."; \
+		echo "DATASETS_PATH=/root/empty_data" >> .env; \
 	fi
 
 DOCKER_DIR := $(PROFILE)

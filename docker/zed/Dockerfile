@@ -15,7 +15,7 @@ RUN apt-get update && \
     echo "deb http://packages.ros.org/ros2/ubuntu noble main" > /etc/apt/sources.list.d/ros2.list && \
     apt-get update && \
     apt-get install -y ros-${ROS_DISTRO}-desktop python3-rosdep python3-colcon-common-extensions && \
-    apt-get install -y ros-${ROS_DISTRO}-depth-image-proc ros-${ROS_DISTRO}-rqt-tf-tree \
+    apt-get install -y ros-${ROS_DISTRO}-depth-image-proc ros-${ROS_DISTRO}-rqt-tf-tree && \
     rm -rf /var/lib/apt/lists/*
 
 RUN rosdep init && rosdep update

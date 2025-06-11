@@ -1,6 +1,9 @@
 # Docker Profiles
 
-This directory contains multiple Docker configurations for building and running Hydra. 
+This directory contains multiple profiles for Docker configurations to build and run Hydra.
+
+## Requirements
+This was tested on Ubuntu 20.04. You will need `git`, `make`, and `vcstool` as well as [docker](https://docs.docker.com/engine/install/ubuntu/) (you may need to run `sudo usermod -aG docker $USER`, `newgrp docker` after installing docker) and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the profiles with GPU support (you may need to run `sudo systemctl restart docker` after installing the toolkit). 
 
 ## Profiles
 
@@ -56,8 +59,8 @@ Before using Docker, make sure to:
     echo "build: {cmake-args: [--no-warn-unused-cli, -DCMAKE_BUILD_TYPE=Release, -DCONFIG_UTILS_ENABLE_ROS=OFF]}" > colcon_defaults.yaml
 
     cd src
-    git clone git@github.mit.edu:SPARK/Hydra-ROS.git hydra_ros
-    vcs import . < hydra_ros/install/ros2.yaml
+    git clone https://github.com/MIT-SPARK/Hydra-ROS.git hydra_ros
+    vcs import . < hydra_ros/install/ros2_docker.yaml
     ```
 
 > :warning: **Warning**</br>
@@ -117,7 +120,7 @@ ros2 bag play /root/data/path/to/rosbag --clock --qos-profile-overrides-path ~/.
 ### Host (zed)
 You can repeat the steps above using the `zed` profile instead of `minimal`, but you must complete a few additional steps on the host to run with hardware. 
 
-1. Add the `zed-ros2-wrapper` to your workspace (the dependencies will be installed via the dockerfile):
+1. Add the `zed-ros2-wrapper` to your workspace, and the dependencies will be installed automatically via the dockerfile (if you forget this step, you must rebuild the image):
 
 ```shell
 cd $WORKSPACE/src
@@ -141,7 +144,7 @@ Once inside the container, you can build and run Hydra for the zed profile (you 
 ```shell
 colcon build --symlink-install --continue-on-error
 source install/setup.bash
-ros2 launch hydra_ros hydra_zed.launch.yaml
+ros2 launch hydra_ros zed2i.launch.yaml
 ```
 
 ## Quick Start (dev)

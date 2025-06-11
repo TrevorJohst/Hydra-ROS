@@ -41,7 +41,7 @@ frontend:
   objects:
     min_cluster_size: 40
     cluster_tolerance: 0.25
-    bounding_box_type: RAABB
+    bounding_box_type: AABB
   surface_places:
     type: place_2d
     prefix: P
