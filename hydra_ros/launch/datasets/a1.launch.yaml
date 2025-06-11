@@ -30,7 +30,7 @@ launch:
   # - node:
   #     pkg: tf2_ros
   #     exec: static_transform_publisher
-  #     name: t265_to_d455_bridge
+  #     name: cam_t265_imu_optical_frame_to_cam_d455_color_optical_frame
   #     args: "0.02216565 0.01795623 -0.21828447 0.9999320589420063 -0.008628001195529594 0.004334249473494838 0.006530518690349069 cam_t265_imu_optical_frame cam_d455_color_optical_frame_bridge"
 
   - node:
