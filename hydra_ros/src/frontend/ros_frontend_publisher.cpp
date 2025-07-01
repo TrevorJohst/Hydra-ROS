@@ -44,8 +44,6 @@ namespace hydra {
 
 using kimera_pgmo::MeshDeltaTypeAdapter;
 using pose_graph_tools::PoseGraphTypeAdapter;
-using BaseInterface = rclcpp::node_interfaces::NodeBaseInterface;
-using rclcpp::CallbackGroupType;
 
 namespace {
 
@@ -67,14 +65,8 @@ void declare_config(RosFrontendPublisher::Config& config) {
 
 RosFrontendPublisher::RosFrontendPublisher(ianvs::NodeHandle nh)
     : config(config::checkValid(get_config())) {
-  auto group = nh.as<BaseInterface>()->create_callback_group(
-      CallbackGroupType::MutuallyExclusive);
-  mesh_delta_server_ =
-      nh.create_service<MeshDeltaSrv>("mesh_delta_query",
-                                      &RosFrontendPublisher::processMeshDeltaQuery,
-                                      this,
-                                      rclcpp::ServicesQoS(),
-                                      group);
+  mesh_delta_server_ = nh.create_service<MeshDeltaSrv>(
+      "mesh_delta_query", &RosFrontendPublisher::processMeshDeltaQuery, this);
   dsg_sender_ = std::make_unique<DsgSender>(config.dsg_sender, nh);
   mesh_graph_pub_ = nh.create_publisher<PoseGraphTypeAdapter>(
       "mesh_graph_incremental", rclcpp::QoS(100).transient_local());
