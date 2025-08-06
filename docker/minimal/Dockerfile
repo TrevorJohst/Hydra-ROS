@@ -39,6 +39,9 @@ RUN apt-get update && rosdep update && \
     rosdep install --from-paths /tmp/deps/src --ignore-src -r -y && \
     rm -rf /var/lib/apt/lists/*
 
+#networking
+RUN apt update && apt install -y ros-jazzy-rmw-zenoh-cpp
+
 #setup ros2 workspace (mounted from host)
 WORKDIR /root/hydra_ws
 
