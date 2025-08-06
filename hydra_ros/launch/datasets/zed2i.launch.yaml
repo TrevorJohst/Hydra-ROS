@@ -52,3 +52,11 @@ launch:
         --config-utilities-yaml {print_missing: false, show_config: true, verbosity: 2}
         --config-utilities-yaml {log_path: $(env HOME)/.hydra/$(var dataset)}
         --config-utilities-yaml {glog_level: 0, glog_verbosity: 0}
+
+   #hydra visualizer
+   - set_remap: {from: hydra_visualizer/dsg, to: hydra/backend/dsg}
+   - include:
+       file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
+       arg:
+         - {name: visualizer_frame, value: map}
+         - {name: rviz_path, value: $(find-pkg-share hydra_ros)/hydra_visualizer/rviz/zed.rviz}

@@ -201,4 +201,4 @@ launch:
       file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
       arg:
         - {name: visualizer_frame, value: map}
-        - {name: rviz_path, value: $(find-pkg-share hydra_ros)/docker/rviz/a1.rviz}
+        - {name: rviz_path, value: $(find-pkg-share hydra_ros)/hydra_visualizer/rviz/a1.rviz}

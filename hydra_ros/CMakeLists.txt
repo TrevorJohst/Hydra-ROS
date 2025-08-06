@@ -122,8 +122,6 @@ install(DIRECTORY include/ DESTINATION include/)
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY config DESTINATION share/${PROJECT_NAME})
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../docker/rviz DESTINATION share/${PROJECT_NAME}/docker)
-
 ament_export_targets(${PROJECT_NAME}-targets HAS_LIBRARY_TARGET)
 ament_export_dependencies(
   geometry_msgs
