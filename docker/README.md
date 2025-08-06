@@ -1,9 +1,9 @@
 # Docker Profiles
 
-This directory contains multiple profiles for Docker configurations to build and run Hydra.
+This directory contains multiple examples to build and run Hydra with different Docker configurations.
 
 ## Requirements
-You will need `git`, `make`, and `vcstool` as well as [docker](https://docs.docker.com/engine/install/ubuntu/) (you may need to run `sudo usermod -aG docker $USER`, `newgrp docker` after installing docker) and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the profiles with GPU support (you may need to run `sudo systemctl restart docker` after installing the toolkit). 
+You will need `git`, `make`, and `vcstool` as well as [docker](https://docs.docker.com/engine/install/ubuntu/) and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for the profiles with GPU support. You may need to run `sudo usermod -aG docker $USER` + `newgrp docker` after installing docker, and similarly, you may need to run `sudo systemctl restart docker` after installing the toolkit. 
 
 ## Profiles
 
@@ -43,12 +43,12 @@ The Makefile supports the following commands:
 
 ---
 
-## Quick Start (minimal)
-The following instructions will guide you through setting up and running Hydra using Docker with the `minimal` profile.
+## Quick Start (PROFILE=minimal)
+The following instructions will guide you through setting up and running Hydra using Docker with the `minimal` profile. The `minimal` profile does not provide CUDA/TensorRT support.
 
 Before starting, export the `WORKSPACE` environment variable to point to your Hydra workspace directory (e.g., `export WORKSPACE=/path/to/hydra_ws`). This is only needed for copy/pasting the commands in the quick start.
 
-### Host (minimal)
+### Host (PROFILE=minimal)
 Before using Docker, make sure to:
 
 1. Setup your workspace:
@@ -72,12 +72,14 @@ Before using Docker, make sure to:
 
     ```shell
     cd $WORKSPACE/src/hydra_ros/docker
-    grep -q '^DATASETS_PATH=' .env || echo 'DATASETS_PATH=/path/to/your/datasets' >> .env
+    echo "DATASETS_PATH=/home/jared/datasets" > .env
     ```
+
+If you want to change the dataset path, you do not need to rebuild the image; you can simply edit the `.env` file in the `docker` directory and restart the container (e.g., `make down` + `make up`). The path will be mounted to `/root/data` inside the container.
 
 3. If running the minimal profile, you can run Hydra on the uhumans2 dataset. Download the ROS 1 bag for the office scene [here](https://drive.google.com/file/d/1awAzQ7R1hdS5O1Z2zOcpYjK7F4_APq_p/view?usp=drive_link). The ROS 1 bag will need to be converted to ROS 2 bag (see below).
 
-### Container (minimal)
+### Container (PROFILE=minimal)
 1. Build the image and run the container for the `minimal` profile:
 
 ```shell
@@ -115,11 +117,11 @@ ros2 bag play /root/data/path/to/rosbag --clock --qos-profile-overrides-path ~/.
 
 
 > **:warning: Warning**<br> 
-> You must convert the ROS 1 bag to a ROS 2 bag before playing it. The `rosbags-convert` tool is preinstalled in the container, and you can use it to convert the bag using the following command: `rosbags-convert --src path/to/office.bag --dst path/to/office`. You should run this in the container if you don't have `rosbags-convert` installed on your host machine.
+> You must convert the ROS 1 bag to a ROS 2 bag before playing it. The `rosbags-convert` tool is preinstalled in the container, and you can use it to convert the bag using the following command: `rosbags-convert --src path/to/office.bag --dst path/to/office` (in ROS2, you do not need `.bag` since a ROS 2 bag is a directory). You should run this in the container if you don't have `rosbags-convert` installed on your host machine.
 
-## Quick Start (zed)
+## Quick Start (PROFILE=zed)
 
-### Host (zed)
+### Host (PROFILE=zed)
 You can repeat the steps above using the `zed` profile instead of `minimal`, but you must complete a few additional steps on the host to run with hardware. 
 
 1. Add the `zed-ros2-wrapper` to your workspace, and the dependencies will be installed automatically via the dockerfile (if you forget this step, you must rebuild the image):
@@ -139,7 +141,7 @@ mkdir -p "$WORKSPACE/.zed_cache"
 cd $WORKSPACE/src/hydra_ros/docker
 grep -q '^ZED_CACHE=' .env || echo "ZED_CACHE=$WORKSPACE/.zed_cache" >> .env
 ```
-### Container (dev)
+### Container (PROFILE=zed)
 
 Once inside the container, you can build and run Hydra for the zed profile (you should already be in `/root/hydra_ws` when opening the shell):
 
@@ -149,8 +151,11 @@ source install/setup.bash
 ros2 launch hydra_ros zed2i.launch.yaml
 ```
 
-## Quick Start (dev)
-In general, you can start from the `dev` profile for development with Hydra if using Docker with your own software/hardware. For example, to run Hydra against a bag recorded with the `a1` sensor payload with the D455/T265 configuration (refer to this [launch](../hydra_ros/launch/datasets/a1.launch.yaml) and [config](../hydra_ros/config/datasets/a1.yaml) for this setup), you can run the following:
+## CUDA/TensorRT Support (PROFILE=dev)
+In general, you can start from the `dev` profile for development if you need CUDA and TensorRT support with Hydra (e.g., required to use [semantic_inference](https://github.com/MIT-SPARK/semantic_inference) with Hydra). You can reuse the same steps from the `minimal` profile to setup the host machine adding your software/hardware dependencies.
+
+### Example with D455/T265
+Here, we provide another example of running Hydra with a bag recorded with a sensor payload (mounted on an `a1` quadruped) using a D455 for color/depth and T265 for visual odometry (refer to this [launch](../hydra_ros/launch/datasets/a1.launch.yaml) and [config](../hydra_ros/config/datasets/a1.yaml)), which runs with the following commands:
 
 1. Run the `a1` launch script for Hydra:
 ```bash
@@ -162,4 +167,4 @@ ros2 launch hydra_ros a1.launch.yaml use_sim_time:=true
 ros2 bag play /path/to/bag --clock --exclude-topics /tf_static
 ```
 > :grey_exclamation: **Note**</br>
-> The static tfs are included in the launch script for the `a1`, so you should exclude them when playing the bag. You can see 
+> The static tfs are included in the launch script for the `a1`, so you should exclude them when playing the bag.
