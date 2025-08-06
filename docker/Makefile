@@ -21,12 +21,13 @@ check-profile:
 #check if .env file exists and if DATASETS_PATH is set
 check-env:
 	@if [ ! -f .env ]; then \
-		echo "Warning: .env file not found. DATASETS_PATH will default to /root/empty_data."; \
+		echo "Warning: .env file not found. Creating one with default DATASETS_PATH."; \
 		echo "DATASETS_PATH=/root/empty_data" > .env; \
-	else \
-		grep -q '^DATASETS_PATH=' .env || echo "DATASETS_PATH not set in .env. Using default fallback."; \
+	elif ! grep -q '^DATASETS_PATH=' .env; then \
+		echo "DATASETS_PATH not set in .env. Adding default fallback."; \
 		echo "DATASETS_PATH=/root/empty_data" >> .env; \
 	fi
+	@grep '^DATASETS_PATH=' .env
 
 DOCKER_DIR := $(PROFILE)
 SERVICE_NAME := hydra-$(PROFILE)
