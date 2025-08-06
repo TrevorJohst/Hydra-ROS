@@ -8,9 +8,12 @@ services:
       dockerfile: src/hydra_ros/docker/dev/Dockerfile
       network: host
     container_name: hydra-dev
+    runtime: nvidia
     volumes:
       - ../../../../:/root/hydra_ws
       - ${DATASETS_PATH:-/root/empty_data}:/root/data
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /dev:/dev
     network_mode: host
     environment:
       - DISPLAY=$DISPLAY
