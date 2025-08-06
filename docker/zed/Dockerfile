@@ -72,6 +72,9 @@ RUN apt-get update && apt-get install -y libzmq5-dev && \
     rosdep install --from-paths /tmp/deps/src --ignore-src -r -y --rosdistro=${ROS_DISTRO} || true && \
     rm -rf /tmp/deps
 
+#networking
+RUN apt update && apt install -y ros-jazzy-rmw-zenoh-cpp
+
 #useful shell configuration
 RUN echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> /root/.bashrc && \
     echo "source /root/hydra_ws/install/setup.bash" >> /root/.bashrc && \
