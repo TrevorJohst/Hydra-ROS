@@ -1,6 +1,3 @@
-_definitions:
-  min_range: &1 0.4
-  max_range: &2 5.0
 map_frame: map
 odom_frame: odom
 robot_frame: zed_camera_link

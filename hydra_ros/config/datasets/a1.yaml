@@ -1,6 +1,3 @@
-_definitions:
-  min_range: &1 0.4
-  max_range: &2 5.0
 map_frame: map
 odom_frame: cam_t265_odom_frame
 robot_frame: cam_d455_link
@@ -17,8 +14,8 @@ input:
         queue_size: 30
       sensor:
         type: camera_info
-        min_range: *1
-        max_range: *2
+        min_range: 0.4
+        max_range: 5.0
         extrinsics:
           type: ros
 map_window:
