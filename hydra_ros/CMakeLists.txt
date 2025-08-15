@@ -32,7 +32,6 @@ ament_python_install_package(${PROJECT_NAME})
 
 add_library(
   ${PROJECT_NAME}
-  src/common.cpp
   src/hydra_ros_pipeline.cpp
   src/active_window/reconstruction_visualizer.cpp
   src/active_window/tsdf_occupancy_publisher.cpp

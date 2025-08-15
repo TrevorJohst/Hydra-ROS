@@ -35,12 +35,12 @@
 #include <config_utilities/config_utilities.h>
 #include <config_utilities/external_registry.h>
 #include <config_utilities/formatting/asl.h>
-#include <config_utilities/printing.h>
 #include <config_utilities/logging/log_to_glog.h>
 #include <config_utilities/parsing/context.h>
+#include <config_utilities/printing.h>
 #include <config_utilities/types/path.h>
 #include <hydra/common/global_info.h>
-#include <ianvs/node_handle_factory.h>
+#include <ianvs/node_init.h>
 #include <ianvs/spin_functions.h>
 
 #include "hydra_ros/hydra_ros_pipeline.h"
@@ -113,8 +113,6 @@ struct RosSink : google::LogSink {
 int main(int argc, char* argv[]) {
   config::initContext(argc, argv, true);
   config::setConfigSettingsFromContext();
-  rclcpp::init(argc, argv);
-
   const auto settings = config::fromContext<hydra::RunSettings>();
 
   FLAGS_minloglevel = settings.glog_level;
@@ -125,11 +123,12 @@ int main(int argc, char* argv[]) {
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
 
-  auto node = std::make_shared<rclcpp::Node>("hydra_ros_node");
+  [[maybe_unused]] const auto node = ianvs::init_node(argc, argv, "hydra_ros_node");
+  auto nh = ianvs::NodeHandle::this_node();
 
   std::shared_ptr<hydra::RosSink> ros_sink;
   if (settings.forward_glog_to_ros) {
-    ros_sink = std::make_shared<hydra::RosSink>(node->get_logger());
+    ros_sink = std::make_shared<hydra::RosSink>(nh.logger());
     google::AddLogSink(ros_sink.get());
   }
 
@@ -138,11 +137,8 @@ int main(int argc, char* argv[]) {
 
   [[maybe_unused]] const auto plugins = config::loadExternalFactories(settings.paths);
 
-  ianvs::NodeHandle nh(*node);
-  ianvs::NodeHandleFactory::addNode("hydra_ros_node", *node);
-  hydra::GlobalInfo::instance().setForceShutdown(settings.force_shutdown);
-
   {  // start hydra scope
+    hydra::GlobalInfo::instance().setForceShutdown(settings.force_shutdown);
     hydra::HydraRosPipeline hydra(settings.robot_id, settings.config_verbosity);
     hydra.init();
 
