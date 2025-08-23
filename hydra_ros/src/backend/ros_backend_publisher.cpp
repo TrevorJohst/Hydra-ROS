@@ -184,7 +184,7 @@ void RosBackendPublisher::publishPoseGraph(const DynamicSceneGraph& graph,
 
   auto pose_graph = *dgraph.getPoseGraph(id_timestamps, false, true);
   pose_graph.stamp_ns = stamp;
-  // pose_graph.frame_id = GlobalInfo::instance().getFrames().map;
+  pose_graph.frame_id = GlobalInfo::instance().getFrames().map;
   pose_graph_pub_->publish(pose_graph);
 }
 
@@ -194,7 +194,7 @@ void RosBackendPublisher::publishMeshGraph(const DynamicSceneGraph&,
   std::map<size_t, std::vector<size_t>> id_timestamps_temp;
   auto mesh_graph = *dgraph.getPoseGraph(id_timestamps_temp, true, false);
   mesh_graph.stamp_ns = stamp;
-  // mesh_graph.frame_id = GlobalInfo::instance().getFrames().map;
+  mesh_graph.frame_id = GlobalInfo::instance().getFrames().map;
   mesh_graph_pub_->publish(mesh_graph);
 }
 
