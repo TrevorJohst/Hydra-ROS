@@ -55,7 +55,7 @@ class TraversabilityPlugin : public VisualizerPlugin {
                                          spark_dsg::Color::red(),     // Intraversable
                                          spark_dsg::Color::green()};  // Traversed
     //! Height of the slice to visualize in meters.
-    float slice_height = 2.0f;
+    float slice_height = 0.0f;
 
     //! line width of the boundary markers
     float line_width = 0.05f;

@@ -58,3 +58,8 @@ renderer:
         interlayer_alpha: 0.4
         interlayer_use_color: true
         interlayer_insertion_skip: 0
+      # TMP
+      text:
+        draw: true
+        adapter:
+          type: AttributesTextAdaptor

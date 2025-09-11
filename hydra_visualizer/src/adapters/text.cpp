@@ -154,7 +154,29 @@ void declare_config(AttributesTextAdaptor::Config&) {}
 std::string AttributesTextAdaptor::getText(const DynamicSceneGraph&,
                                            const SceneGraphNode& node) const {
   std::stringstream ss;
-  ss << node.attributes();
+  // TMP
+  auto attrs = node.tryAttributes<TraversabilityNodeAttributes>();
+  if (attrs) {
+    if (attrs->cognition_labels.empty()) {
+      ss << "No Label";
+    } else {
+      int max_label = -1;
+      float max_weight = -1.0f;
+      float total_weight = 0.0f;
+
+      for (const auto& [label, weight] : attrs->cognition_labels) {
+        total_weight += weight;
+        if (weight > max_weight) {
+          max_weight = weight;
+          max_label = label;
+        }
+      }
+
+      ss << max_label << " (" << int(max_weight / total_weight * 100.0f) << "%)";
+    }
+  }
+
+  // ss << node.attributes();
   return ss.str();
 }
 
