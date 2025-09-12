@@ -53,7 +53,7 @@ class DsgVisualizer {
     SceneGraphRenderer::Config renderer;
     config::VirtualConfig<GraphWrapper> graph;
     // Specify additional plugins that should be loaded <name, config>
-    std::map<std::string, config::VirtualConfig<VisualizerPlugin>> plugins;
+    std::map<std::string, config::VirtualConfig<VisualizerPlugin, true>> plugins;
   } const config;
 
   //! Construct the visualizer from a config
@@ -72,6 +72,10 @@ class DsgVisualizer {
 
   //! Delete all current plugins
   void clearPlugins();
+
+  spark_dsg::DynamicSceneGraph::Ptr getGraph() const {
+    return graph_ ? graph_->get().graph : nullptr;
+  }
 
  private:
   void spinOnce(bool force = false);

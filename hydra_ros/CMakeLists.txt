@@ -89,6 +89,9 @@ ament_target_dependencies(
 add_executable(hydra_ros_node app/hydra_node.cpp)
 target_link_libraries(hydra_ros_node ${PROJECT_NAME} ${gflags_LIBRARIES})
 
+add_executable(cluster_places_node app/cluster_places.cpp)
+target_link_libraries(cluster_places_node ${PROJECT_NAME} ${gflags_LIBRARIES})
+
 rclcpp_components_register_node(
   ${PROJECT_NAME}
   PLUGIN
@@ -111,6 +114,7 @@ install(
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 install(TARGETS hydra_ros_node RUNTIME DESTINATION lib/${PROJECT_NAME})
+install(TARGETS cluster_places_node RUNTIME DESTINATION lib/${PROJECT_NAME})
 install(
   PROGRAMS app/csv_to_tf
            app/dsg_republisher
