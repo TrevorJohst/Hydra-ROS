@@ -35,7 +35,9 @@
 #include "hydra_visualizer/drawing.h"
 
 #include <glog/logging.h>
+#include <spark_dsg/colormaps.h>
 #include <spark_dsg/dynamic_scene_graph.h>
+#include <spark_dsg/edge_attributes.h>
 #include <spark_dsg/node_attributes.h>
 #include <spark_dsg/node_symbol.h>
 #include <spark_dsg/printing.h>
@@ -526,12 +528,20 @@ Marker makeLayerEdgeMarkers(const std_msgs::msg::Header& header,
     target.z += info.z_offset;
     marker.points.push_back(target);
 
-    const auto c_source =
-        info.config.edges.use_color ? info.node_color(source_node) : Color();
-    const auto c_target =
-        info.config.edges.use_color ? info.node_color(target_node) : Color();
-    marker.colors.push_back(makeColorMsg(c_source, info.config.edges.alpha));
-    marker.colors.push_back(makeColorMsg(c_target, info.config.edges.alpha));
+    // TMP(lschmid): If edges have weights use these instead.
+    const auto& attrs = edge.attributes();
+    if (attrs.weighted) {
+      const auto color = spark_dsg::colormaps::rainbow(attrs.weight);
+      marker.colors.emplace_back(makeColorMsg(color, info.config.edges.alpha));
+      marker.colors.emplace_back(marker.colors.back());
+    } else {
+      const auto c_source =
+          info.config.edges.use_color ? info.node_color(source_node) : Color();
+      const auto c_target =
+          info.config.edges.use_color ? info.node_color(target_node) : Color();
+      marker.colors.push_back(makeColorMsg(c_source, info.config.edges.alpha));
+      marker.colors.push_back(makeColorMsg(c_target, info.config.edges.alpha));
+    }
   }
 
   return marker;

@@ -10,9 +10,11 @@
 #include <config_utilities/parsing/context.h>
 #include <config_utilities/printing.h>
 #include <config_utilities/settings.h>
+#include <config_utilities/types/enum.h>
 #include <config_utilities_ros/ros_dynamic_config_server.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <hydra/openset/embedding_distances.h>
 #include <hydra/rooms/room_finder.h>
 #include <ianvs/node_init.h>
 #include <spark_dsg/dynamic_scene_graph.h>
@@ -22,6 +24,8 @@
 
 #include "hydra_ros/utils/dsg_streaming_interface.h"
 
+using hydra::FeatureMap;
+using hydra::FeatureVector;
 using spark_dsg::DsgLayers;
 using spark_dsg::DynamicSceneGraph;
 using spark_dsg::NodeId;
@@ -34,9 +38,13 @@ struct NodeConfig {
   bool interactive = true;
 };
 
+enum class FeatureType { CLIP = 0, SENTENCE = 1, BOTH = 2 };
+
 struct Config {
   std::string src_path;
   std::string dst_path;
+  FeatureType feature_type = FeatureType::BOTH;
+  config::VirtualConfig<hydra::EmbeddingDistance> distance_metric;
   std::string places_layer = DsgLayers::TRAVERSABILITY;
   hydra::RoomFinderConfig room_finder;
 };
@@ -53,6 +61,12 @@ void declare_config(Config& config) {
   name("ClusterPlaces::Config");
   field(config.src_path, "src_path");
   field(config.dst_path, "dst_path");
+  enum_field(config.feature_type,
+             "feature_type",
+             {{FeatureType::CLIP, "CLIP"},
+              {FeatureType::SENTENCE, "SENTENCE"},
+              {FeatureType::BOTH, "BOTH"}});
+  field(config.distance_metric, "distance_metric");
   field(config.places_layer, "places_layer");
   field(config.room_finder, "room_finder");
 }
@@ -70,6 +84,17 @@ class Clusterer {
       LOG(WARNING) << "No graph loaded, cannot process";
       return;
     }
+    if (!graph_->hasLayer(config.places_layer)) {
+      LOG(ERROR) << "Graph does not have a layer named '" << config.places_layer
+                 << "', cannot cluster places.";
+      return;
+    }
+
+    // computeFeatures.
+    const bool features_updated = computeFeatures(config);
+    if (features_updated || !prev_config_.distance_metric != config.distance_metric) {
+      computeDistances(config);
+    }
 
     // Cluster.
     cluster(config);
@@ -79,30 +104,107 @@ class Clusterer {
 
     // Save.
     save(config);
+    prev_config_ = config;
   }
 
  private:
   const hydra::DsgSender sender_;
   DynamicSceneGraph::Ptr graph_;
-  std::string prev_src_;
-  std::string prev_dst_;
+  Config prev_config_;
+  FeatureMap<int> node_features_;
 
-  void preprocess(const Config& config) {
+  bool computeFeatures(const Config& config) {
+    if (!node_features_.empty() && config.feature_type == prev_config_.feature_type) {
+      return false;
+    }
+    node_features_.clear();
+    size_t num_invalid = 0;
+
+    // Extract the feature map.
+    const auto& meta_data = graph_->metadata.get()["features"];
+    for (const auto& [key, value] : meta_data.items()) {
+      const int id = std::stoi(key);
+      if (!value.contains("clip_feature") || value["clip_feature"].is_null() ||
+          !value.contains("sentence_embedding_feature") ||
+          value["sentence_embedding_feature"].is_null()) {
+        num_invalid++;
+        continue;
+      }
+
+      const auto clip_vec = value["clip_feature"].get<std::vector<float>>();
+      const auto sentence_vec =
+          value["sentence_embedding_feature"].get<std::vector<float>>();
+      FeatureVector feature;
+      switch (config.feature_type) {
+        case FeatureType::CLIP:
+          feature = Eigen::Map<const FeatureVector>(clip_vec.data(), clip_vec.size());
+          break;
+        case FeatureType::SENTENCE:
+          feature =
+              Eigen::Map<const FeatureVector>(sentence_vec.data(), sentence_vec.size());
+          break;
+        case FeatureType::BOTH: {
+          feature = FeatureVector(clip_vec.size() + sentence_vec.size());
+          feature << Eigen::Map<const FeatureVector>(clip_vec.data(), clip_vec.size()),
+              Eigen::Map<const FeatureVector>(sentence_vec.data(), sentence_vec.size());
+          break;
+        }
+        default:
+          LOG(ERROR) << "Unhandled feature type.";
+          return false;
+      }
+      node_features_[id] = feature;
+    }
+
+    // Remap invalid features to zero vectors.
+    const int feature_dim = node_features_.begin()->second.size();
+    LOG(INFO) << "Read " << node_features_.size() << " features, " << num_invalid
+              << " invalid. Feature dim: " << feature_dim;
+    return true;
+  }
+
+  void computeDistances(const Config& config) {
+    const auto metric = config.distance_metric.create();
+
     // Compute the edge similarities.
+    size_t num_invalid = 0;
+    const auto& places_layer = graph_->getLayer(config.places_layer);
+    for (auto& [_, edge] : places_layer.edges()) {
+      const auto& source_node = places_layer.getNode(edge.source);
+      const auto& source_attrs = source_node.attributes<TraversabilityNodeAttributes>();
+      const auto source_feature_it =
+          node_features_.find(source_attrs.cognition_labels.begin()->first);
+      if (source_feature_it == node_features_.end()) {
+        edge.info->weight = 0.0f;
+        num_invalid++;
+        continue;
+      }
+
+      const auto& target_node = places_layer.getNode(edge.target);
+      const auto& target_attrs = target_node.attributes<TraversabilityNodeAttributes>();
+      const auto target_feature_it =
+          node_features_.find(target_attrs.cognition_labels.begin()->first);
+      if (target_feature_it == node_features_.end()) {
+        edge.info->weight = 0.0f;
+        num_invalid++;
+        continue;
+      }
+
+      // Compute the distance.
+      const float dist =
+          metric->dist(source_feature_it->second, target_feature_it->second);
+      edge.info->weight = dist;
+      edge.info->weighted = true;
+    }
+    LOG(INFO) << "Computed distances for " << places_layer.edges().size() << " edges, "
+              << num_invalid << " invalid.";
   }
 
   void cluster(const Config& config) {
-    const auto places_layer = graph_->findLayer(config.places_layer);
-    if (!places_layer) {
-      LOG(WARNING) << "Graph does not contain a layer named '" << config.places_layer
-                   << "', cannot cluster places.";
-      return;
-    }
-    auto places_clone = places_layer->clone();
-
-    // Find Rooms.
     hydra::RoomFinder room_finder(config.room_finder);
-    auto rooms = room_finder.findRooms(*places_clone);
+    // auto rooms =
+    // room_finder.findRooms(*graph_->getLayer(config.places_layer).clone());
+    auto rooms = room_finder.findRooms(graph_->getLayer(config.places_layer));
     rewriteRooms(rooms.get(), *graph_);
     room_finder.addRoomPlaceEdges(*graph_, config.places_layer);
   }
@@ -133,24 +235,24 @@ class Clusterer {
   }
 
   void load(const Config& config) {
-    if (config.src_path != prev_src_) {
-      prev_src_ = config.src_path;
-      graph_ = spark_dsg::DynamicSceneGraph::load(config.src_path);
-      if (!graph_) {
-        LOG(ERROR) << "Failed to load graph from '" << config.src_path << "'.";
-        return;
-      }
-      LOG(INFO) << "Loaded graph from '" << config.src_path << "'.";
-      preprocess(config);
+    if (config.src_path == prev_config_.src_path && graph_) {
+      return;
     }
+    graph_ = spark_dsg::DynamicSceneGraph::load(config.src_path);
+    if (!graph_) {
+      LOG(ERROR) << "Failed to load graph from '" << config.src_path << "'.";
+      return;
+    }
+    LOG(INFO) << "Loaded graph from '" << config.src_path << "'.";
+    node_features_.clear();
   }
 
   void save(const Config& config) {
-    if (config.dst_path != prev_dst_) {
-      prev_dst_ = config.dst_path;
-      graph_->save(config.dst_path);
-      LOG(INFO) << "Saved clustered graph to '" << config.dst_path << "'.";
+    if (config.dst_path == prev_config_.dst_path) {
+      return;
     }
+    graph_->save(config.dst_path);
+    LOG(INFO) << "Saved clustered graph to '" << config.dst_path << "'.";
   }
 };
 
@@ -191,12 +293,12 @@ int main(int argc, char** argv) {
   // Run interactively.
   config::DynamicConfig<Config> config("cluster_places", initial_config);
   config.setCallback([&clusterer, &config]() { clusterer.process(config.get()); });
-  const config::RosDynamicConfigServer server(nh.node());
   clusterer.process(config.get());
 
   // Spin.
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(nh.as<rclcpp::node_interfaces::NodeBaseInterface>());
+  const config::RosDynamicConfigServer server(nh.node());
   executor.spin();
 
   rclcpp::shutdown();
