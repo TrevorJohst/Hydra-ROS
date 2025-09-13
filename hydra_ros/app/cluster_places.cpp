@@ -79,14 +79,7 @@ class Clusterer {
   void process(const Config& config) {
     LOG(INFO) << "Processing:\n" << config::toString(config);
     // Load.
-    load(config);
-    if (!graph_) {
-      LOG(WARNING) << "No graph loaded, cannot process";
-      return;
-    }
-    if (!graph_->hasLayer(config.places_layer)) {
-      LOG(ERROR) << "Graph does not have a layer named '" << config.places_layer
-                 << "', cannot cluster places.";
+    if (!load(config)) {
       return;
     }
 
@@ -101,6 +94,7 @@ class Clusterer {
 
     // Publish.
     sender_.sendGraph(*graph_, rclcpp::Time(0));
+    LOG(INFO) << "Published clustered graph.";
 
     // Save.
     save(config);
@@ -124,29 +118,31 @@ class Clusterer {
     const auto& meta_data = graph_->metadata.get()["features"];
     for (const auto& [key, value] : meta_data.items()) {
       const int id = std::stoi(key);
-      if (!value.contains("clip_feature") || value["clip_feature"].is_null() ||
-          !value.contains("sentence_embedding_feature") ||
-          value["sentence_embedding_feature"].is_null()) {
-        num_invalid++;
-        continue;
-      }
-
-      const auto clip_vec = value["clip_feature"].get<std::vector<float>>();
-      const auto sentence_vec =
-          value["sentence_embedding_feature"].get<std::vector<float>>();
       FeatureVector feature;
       switch (config.feature_type) {
         case FeatureType::CLIP:
-          feature = Eigen::Map<const FeatureVector>(clip_vec.data(), clip_vec.size());
+          feature = getClipFeature(value);
+          if (feature.size() == 0) {
+            num_invalid++;
+            continue;
+          }
           break;
         case FeatureType::SENTENCE:
-          feature =
-              Eigen::Map<const FeatureVector>(sentence_vec.data(), sentence_vec.size());
+          feature = getSentenceFeature(value);
+          if (feature.size() == 0) {
+            num_invalid++;
+            continue;
+          }
           break;
         case FeatureType::BOTH: {
-          feature = FeatureVector(clip_vec.size() + sentence_vec.size());
-          feature << Eigen::Map<const FeatureVector>(clip_vec.data(), clip_vec.size()),
-              Eigen::Map<const FeatureVector>(sentence_vec.data(), sentence_vec.size());
+          const auto clip_feature = getClipFeature(value);
+          const auto sentence_feature = getSentenceFeature(value);
+          if (clip_feature.size() == 0 || sentence_feature.size() == 0) {
+            num_invalid++;
+            continue;
+          }
+          feature.resize(clip_feature.size() + sentence_feature.size());
+          feature << clip_feature, sentence_feature;
           break;
         }
         default:
@@ -158,20 +154,52 @@ class Clusterer {
 
     // Remap invalid features to zero vectors.
     const int feature_dim = node_features_.begin()->second.size();
-    LOG(INFO) << "Read " << node_features_.size() << " features, " << num_invalid
+    LOG(INFO) << "Read " << (node_features_.size() + num_invalid)
+              << " features, of which " << num_invalid
               << " invalid. Feature dim: " << feature_dim;
     return true;
   }
 
+  FeatureVector getClipFeature(const nlohmann::json& meta) {
+    if (!meta.contains("clip_feature") || meta["clip_feature"].is_null()) {
+      return {};
+    }
+    const auto clip_vec = meta["clip_feature"].get<std::vector<float>>();
+    if (clip_vec.empty()) {
+      return {};
+    }
+    return Eigen::Map<const FeatureVector>(clip_vec.data(), clip_vec.size());
+  }
+
+  FeatureVector getSentenceFeature(const nlohmann::json& meta) {
+    if (!meta.contains("sentence_embedding_feature") ||
+        meta["sentence_embedding_feature"].is_null()) {
+      return {};
+    }
+    const auto sentence_vec =
+        meta["sentence_embedding_feature"].get<std::vector<float>>();
+    if (sentence_vec.empty()) {
+      return {};
+    }
+    return Eigen::Map<const FeatureVector>(sentence_vec.data(), sentence_vec.size());
+  }
+
   void computeDistances(const Config& config) {
     const auto metric = config.distance_metric.create();
+    const auto& layer = graph_->getLayer(config.places_layer);
+
+    for (const auto& [_, node] : layer.nodes()) {
+      node->attributes<TraversabilityNodeAttributes>().distance = 0.0;
+    }
 
     // Compute the edge similarities.
     size_t num_invalid = 0;
-    const auto& places_layer = graph_->getLayer(config.places_layer);
-    for (auto& [_, edge] : places_layer.edges()) {
-      const auto& source_node = places_layer.getNode(edge.source);
-      const auto& source_attrs = source_node.attributes<TraversabilityNodeAttributes>();
+    std::vector<float> distances;
+    distances.reserve(layer.edges().size());
+    for (auto& [_, edge] : layer.edges()) {
+      edge.info->weighted = true;
+      const auto& source_node = layer.getNode(edge.source);
+      auto& source_attrs = source_node.attributes<TraversabilityNodeAttributes>();
       const auto source_feature_it =
           node_features_.find(source_attrs.cognition_labels.begin()->first);
       if (source_feature_it == node_features_.end()) {
@@ -180,8 +208,8 @@ class Clusterer {
         continue;
       }
 
-      const auto& target_node = places_layer.getNode(edge.target);
-      const auto& target_attrs = target_node.attributes<TraversabilityNodeAttributes>();
+      const auto& target_node = layer.getNode(edge.target);
+      auto& target_attrs = target_node.attributes<TraversabilityNodeAttributes>();
       const auto target_feature_it =
           node_features_.find(target_attrs.cognition_labels.begin()->first);
       if (target_feature_it == node_features_.end()) {
@@ -190,21 +218,42 @@ class Clusterer {
         continue;
       }
 
-      // Compute the distance.
-      const float dist =
-          metric->dist(source_feature_it->second, target_feature_it->second);
-      edge.info->weight = dist;
-      edge.info->weighted = true;
+      // Compute the similarities.
+      const double score = 1.0 - 0.5 * metric->score(source_feature_it->second,
+                                                     target_feature_it->second);
+      edge.info->weight = score;
+      source_attrs.distance = std::max(source_attrs.distance, score);
+      target_attrs.distance = std::max(target_attrs.distance, score);
+      distances.push_back(score);
     }
-    LOG(INFO) << "Computed distances for " << places_layer.edges().size() << " edges, "
-              << num_invalid << " invalid.";
+
+    // Compute statistics
+    double min_score = std::numeric_limits<double>::max();
+    double max_score = std::numeric_limits<double>::lowest();
+    double sum = 0.0;
+    double sum_sq = 0.0;
+    for (const auto& d : distances) {
+      if (d < min_score) min_score = d;
+      if (d > max_score) max_score = d;
+      sum += d;
+      sum_sq += d * d;
+    }
+    double mean = distances.empty() ? 0.0 : sum / distances.size();
+    double stddev = 0.0;
+    if (!distances.empty()) {
+      stddev = std::sqrt(sum_sq / distances.size() - mean * mean);
+    }
+
+    LOG(INFO) << "Computed scores for " << layer.edges().size() << " edges, of which "
+              << num_invalid << " invalid. "
+              << "min: " << min_score << ", max: " << max_score << ", mean: " << mean
+              << ", stddev: " << stddev;
   }
 
   void cluster(const Config& config) {
     hydra::RoomFinder room_finder(config.room_finder);
-    // auto rooms =
-    // room_finder.findRooms(*graph_->getLayer(config.places_layer).clone());
-    auto rooms = room_finder.findRooms(graph_->getLayer(config.places_layer));
+    auto rooms = room_finder.findRooms(*graph_->getLayer(config.places_layer).clone());
+    // auto rooms = room_finder.findRooms(graph_->getLayer(config.places_layer));
     rewriteRooms(rooms.get(), *graph_);
     room_finder.addRoomPlaceEdges(*graph_, config.places_layer);
   }
@@ -234,17 +283,24 @@ class Clusterer {
     }
   }
 
-  void load(const Config& config) {
+  bool load(const Config& config) {
     if (config.src_path == prev_config_.src_path && graph_) {
-      return;
+      return true;
     }
     graph_ = spark_dsg::DynamicSceneGraph::load(config.src_path);
     if (!graph_) {
       LOG(ERROR) << "Failed to load graph from '" << config.src_path << "'.";
-      return;
+      return false;
     }
     LOG(INFO) << "Loaded graph from '" << config.src_path << "'.";
+
+    if (!graph_->hasLayer(config.places_layer)) {
+      LOG(ERROR) << "Graph does not have a layer named '" << config.places_layer
+                 << "', cannot cluster places.";
+      return false;
+    }
     node_features_.clear();
+    return true;
   }
 
   void save(const Config& config) {

@@ -531,7 +531,8 @@ Marker makeLayerEdgeMarkers(const std_msgs::msg::Header& header,
     // TMP(lschmid): If edges have weights use these instead.
     const auto& attrs = edge.attributes();
     if (attrs.weighted) {
-      const auto color = spark_dsg::colormaps::rainbow(attrs.weight);
+      const auto color =
+          attrs.weight != 0.0 ? spark_dsg::colormaps::rainbow(attrs.weight) : Color();
       marker.colors.emplace_back(makeColorMsg(color, info.config.edges.alpha));
       marker.colors.emplace_back(marker.colors.back());
     } else {
