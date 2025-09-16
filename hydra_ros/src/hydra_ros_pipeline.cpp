@@ -45,6 +45,7 @@
 #include <hydra/common/global_info.h>
 #include <hydra/frontend/graph_builder.h>
 #include <hydra/loop_closure/loop_closure_module.h>
+#include <hydra/utils/cognition_labels.h>
 #include <pose_graph_tools_ros/conversions.h>
 
 #include <cstdint>
@@ -139,6 +140,9 @@ void HydraRosPipeline::init() {
   if (config.features) {
     modules_["features"] = config.features.create();  // has to come after input module
   }
+
+  // TMP Setup cognition labels for consistency.
+  CognitionLabels::setup();
 }
 
 void HydraRosPipeline::start() {

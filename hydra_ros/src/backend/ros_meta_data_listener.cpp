@@ -60,7 +60,7 @@ void declare_config(RosMetaDataListener::Config& config) {
 RosMetaDataListener::RosMetaDataListener(const Config& config) {
   sub_ = ianvs::NodeHandle::this_node().create_subscription<std_msgs::msg::String>(
       config.topic_name,
-      rclcpp::QoS(10),
+      rclcpp::QoS(100),
       std::bind(&RosMetaDataListener::callback, this, std::placeholders::_1));
 }
 
