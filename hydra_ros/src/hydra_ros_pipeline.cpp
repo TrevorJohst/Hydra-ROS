@@ -135,14 +135,16 @@ void HydraRosPipeline::init() {
     frontend_->addSink(std::make_shared<RosFrontendPublisher>(nh / "frontend"));
   }
 
+  // TMP Setup cognition labels for consistency.
+  CognitionLabels::setup();
+  LOG(INFO) << "Setup cognition labels with config\n"
+            << config::toString(config::CognitionLabels::instance().config);
+
   input_module_ =
       std::make_shared<RosInputModule>(config.input, active_window_->queue());
   if (config.features) {
     modules_["features"] = config.features.create();  // has to come after input module
   }
-
-  // TMP Setup cognition labels for consistency.
-  CognitionLabels::setup();
 }
 
 void HydraRosPipeline::start() {
