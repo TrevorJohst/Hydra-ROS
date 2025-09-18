@@ -29,6 +29,7 @@ using hydra::CognitionLabels;
 using hydra::FeatureMap;
 using hydra::FeatureVector;
 using hydra::LazyCognitionLabels;
+using spark_dsg::Color;
 using spark_dsg::DsgLayers;
 using spark_dsg::DynamicSceneGraph;
 using spark_dsg::NodeId;
@@ -130,7 +131,7 @@ class Clusterer {
 
       // Check if we have a feature.
       num_with_id++;
-      attrs.semantic_label = getMaxCognitionLabel(attrs.cognition_labels);
+      attrs.semantic_label = hydra::getMaxCognitionLabel(attrs.cognition_labels).first;
       const auto& feature = labels_->get(attrs.semantic_label);
       if (feature.size() == 0) {
         attrs.color = Color::red();
@@ -151,23 +152,23 @@ class Clusterer {
     distances.reserve(layer.edges().size());
     for (auto& [_, edge] : layer.edges()) {
       edge.info->weighted = true;
-      const auto& source_node = layer.getNode(edge.source);
-      if (!source_node.is_active) {
+      auto& source_attrs =
+          layer.getNode(edge.source).attributes<TraversabilityNodeAttributes>();
+      if (!source_attrs.is_active) {
         edge.info->weight = 0.0f;
         num_invalid++;
         continue;
       }
 
-      const auto& target_node = layer.getNode(edge.target);
-      if (!target_node.is_active) {
+      auto& target_attrs =
+          layer.getNode(edge.target).attributes<TraversabilityNodeAttributes>();
+      if (!target_attrs.is_active) {
         edge.info->weight = 0.0f;
         num_invalid++;
         continue;
       }
 
       // Compute the similarities.
-      auto& source_attrs = source_node.attributes<TraversabilityNodeAttributes>();
-      auto& target_attrs = target_node.attributes<TraversabilityNodeAttributes>();
       const double score =
           CognitionLabels::getScore(labels_->get(source_attrs.semantic_label),
                                     labels_->get(target_attrs.semantic_label));

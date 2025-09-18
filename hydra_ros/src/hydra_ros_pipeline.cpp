@@ -137,7 +137,7 @@ void HydraRosPipeline::init() {
 
   // TMP Setup cognition labels for consistency.
   CognitionLabels::setup();
-  LOG(INFO) << "Setup cognition labels with config\n"
+  LOG(INFO) << "Setup cognition labels:\n"
             << config::toString(CognitionLabels::instance().config);
 
   input_module_ =
