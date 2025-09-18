@@ -25,8 +25,10 @@
 
 #include "hydra_ros/utils/dsg_streaming_interface.h"
 
+using hydra::CognitionLabels;
 using hydra::FeatureMap;
 using hydra::FeatureVector;
+using hydra::LazyCognitionLabels;
 using spark_dsg::DsgLayers;
 using spark_dsg::DynamicSceneGraph;
 using spark_dsg::NodeId;

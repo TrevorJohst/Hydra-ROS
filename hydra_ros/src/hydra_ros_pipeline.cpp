@@ -138,7 +138,7 @@ void HydraRosPipeline::init() {
   // TMP Setup cognition labels for consistency.
   CognitionLabels::setup();
   LOG(INFO) << "Setup cognition labels with config\n"
-            << config::toString(config::CognitionLabels::instance().config);
+            << config::toString(CognitionLabels::instance().config);
 
   input_module_ =
       std::make_shared<RosInputModule>(config.input, active_window_->queue());
