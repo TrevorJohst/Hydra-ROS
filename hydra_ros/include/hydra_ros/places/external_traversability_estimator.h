@@ -33,48 +33,47 @@
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
 #pragma once
-#include <hydra/frontend/graph_builder.h>
-#include <kimera_pgmo_ros/conversion/mesh_delta.h>
-#include <pose_graph_tools_ros/conversions.h>
 
-#include <map>
-#include <queue>
+#include <hydra/places/traversability_estimator.h>
 
-#include <kimera_pgmo_msgs/srv/mesh_delta_query.hpp>
+#include <mutex>
 
-#include "hydra_ros/utils/dsg_streaming_interface.h"
+#include <nav_msgs/msg/occupancy_grid.hpp>
+#include <rclcpp/rclcpp.hpp>
 
-namespace hydra {
+namespace hydra::places {
 
-class RosFrontendPublisher : public GraphBuilder::Sink {
+/**
+ * @brief Takes in an external traversability map as occupancy grid to perform
+ * traversability analysis.
+ */
+class ExternalTraversabilityEstimator : public TraversabilityEstimator {
  public:
-  using MeshDeltaSrv = kimera_pgmo_msgs::srv::MeshDeltaQuery;
-
   struct Config {
-    //! @brief Configuration for dsg publisher
-    DsgSender::Config dsg_sender;
-    size_t mesh_delta_queue_size = 100;  // Store mesh delta to resend. 0 for infinite
+    //! @brief The height above the robot body to consider for traversability in meters.
+    std::string input_topic = "/local_cost_map";
+    unsigned int queue_size = 2;
   } const config;
 
-  explicit RosFrontendPublisher(ianvs::NodeHandle);
+  using State = spark_dsg::TraversabilityState;
 
-  void call(uint64_t timestamp_ns,
-            const DynamicSceneGraph& graph,
-            const BackendInput& backend_input) const override;
+  ExternalTraversabilityEstimator(const Config& config);
+  ~ExternalTraversabilityEstimator() override = default;
 
-  std::string printInfo() const override;
+  void updateTraversability(const ActiveWindowOutput& msg) override;
+
+  void callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
+
+  const TraversabilityLayer& getTraversabilityLayer() const override;
 
  protected:
-  void processMeshDeltaQuery(const MeshDeltaSrv::Request::SharedPtr req,
-                             MeshDeltaSrv::Response::SharedPtr resp);
+  rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_;
+  mutable std::mutex mutex_;
 
-  std::unique_ptr<DsgSender> dsg_sender_;
-  mutable std::map<uint16_t, kimera_pgmo::MeshDelta::Ptr> stored_delta_;
-
-  pose_graph_tools::PoseGraphPublisher mesh_graph_pub_;
-  kimera_pgmo::PgmoMeshDeltaPublisher mesh_update_pub_;
-  rclcpp::Service<MeshDeltaSrv>::SharedPtr mesh_delta_server_;
-  rclcpp::TypeAdapter<kimera_pgmo::MeshDelta, kimera_pgmo_msgs::msg::MeshDelta>
-      mesh_delta_converter_;
+ protected:
+  State occupancyToTraversability(int8_t occupancy) const;
 };
-}  // namespace hydra
+
+void declare_config(ExternalTraversabilityEstimator::Config& config);
+
+}  // namespace hydra::places

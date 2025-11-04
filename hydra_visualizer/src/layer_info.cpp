@@ -35,6 +35,7 @@
 #include "hydra_visualizer/layer_info.h"
 
 #include <config_utilities/config.h>
+#include <config_utilities/types/enum.h>
 #include <spark_dsg/node_attributes.h>
 
 namespace hydra::visualizer {
@@ -71,6 +72,7 @@ void declare_config(LayerConfig::Edges& config) {
   field(config.draw, "draw");
   field(config.scale, "scale");
   field(config.alpha, "alpha");
+  enum_field(config.color, "color");
   field(config.use_color, "use_color");
   field(config.draw_interlayer, "draw_interlayer");
   field(config.interlayer_use_source, "interlayer_use_source");
@@ -91,6 +93,7 @@ void declare_config(LayerConfig::Text& config) {
   field(config.scale, "scale");
   field(config.add_jitter, "add_jitter");
   field(config.jitter_scale, "jitter_scale");
+  enum_field(config.color, "color");
 }
 
 void declare_config(LayerConfig::BoundingBoxes& config) {
@@ -161,6 +164,10 @@ LayerInfo& LayerInfo::graph(const DynamicSceneGraph& graph, LayerId layer) {
 
   return *this;
 }
+
+Color LayerInfo::text_color() const { return colorFromName(config.text.color); }
+
+Color LayerInfo::edge_color() const { return colorFromName(config.edges.color); }
 
 bool LayerInfo::shouldVisualize(const spark_dsg::SceneGraphNode& node) const {
   if (!config.visualize) {
