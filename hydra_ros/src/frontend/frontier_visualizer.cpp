@@ -10,11 +10,9 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <rclcpp/time.hpp>
 #include <visualization_msgs/msg/marker.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
 
 namespace hydra {
 
-using geometry_msgs::msg::Point;
 using visualization_msgs::msg::Marker;
 using visualization_msgs::msg::MarkerArray;
 
@@ -44,8 +42,8 @@ void FrontierVisualizer::call(uint64_t timestamp_ns,
   });
 }
 
-void FrontierVisualizer::drawRayFronts(const std::vector<Frontier>& frontiers,
-                                       const std::string& ns) const {
+MarkerArray FrontierVisualizer::drawRayFronts(const std::vector<Frontier>& frontiers,
+                                              const std::string& ns) const {
   MarkerArray marker_array;
   int id = 0;
 
@@ -54,14 +52,12 @@ void FrontierVisualizer::drawRayFronts(const std::vector<Frontier>& frontiers,
 
     for (const auto& rf : f.rayfronts) {
       Marker arrow;
-      arrow.header.frame_id = frame_id;
-      arrow.header.stamp = rclcpp::Clock().now();
       arrow.ns = ns;
       arrow.id = id++;
       arrow.type = Marker::ARROW;
       arrow.action = Marker::ADD;
 
-      Point p_start;
+      geometry_msgs::msg::Point p_start;
       p_start.x = origin.x();
       p_start.y = origin.y();
       p_start.z = origin.z();
@@ -88,5 +84,6 @@ void FrontierVisualizer::drawRayFronts(const std::vector<Frontier>& frontiers,
       marker_array.markers.push_back(arrow);
     }
   }
+  return marker_array;
 }
 }  // namespace hydra

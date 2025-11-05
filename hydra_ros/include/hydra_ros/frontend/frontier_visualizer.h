@@ -5,13 +5,15 @@
 #include <hydra_visualizer/utils/marker_group_pub.h>
 #include <ianvs/node_handle.h>
 
+#include <visualization_msgs/msg/marker_array.hpp>
+
 namespace hydra {
 
 class FrontierVisualizer : public FrontierExtractor::Sink {
  public:
   struct Config {
     std::string ns = "~/frontiers";
-    double arrow_length = 0.5;
+    double arrow_length = 1.0;
     visualizer::CategoricalColormap::Config label_colormap;
   } const config;
 
@@ -24,8 +26,8 @@ class FrontierVisualizer : public FrontierExtractor::Sink {
   void call(uint64_t timestamp_ns, const std::vector<Frontier>&) const override;
 
  private:
-  void drawRayFronts(const std::vector<Frontier>& frontiers,
-                     const std::string& ns) const;
+  visualization_msgs::msg::MarkerArray drawRayFronts(
+      const std::vector<Frontier>& frontiers, const std::string& ns) const;
 
  protected:
   ianvs::NodeHandle nh_;
