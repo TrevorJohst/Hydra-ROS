@@ -23,11 +23,20 @@ class FrontierVisualizer : public FrontierExtractor::Sink {
 
   std::string printInfo() const override;
 
-  void call(uint64_t timestamp_ns, const std::vector<Frontier>&) const override;
+  void call(uint64_t timestamp_ns,
+            const std::vector<Frontier>&,
+            const std::vector<Frontier>&) const override;
 
  private:
+  visualization_msgs::msg::MarkerArray drawFrontiers(
+      const std::vector<Frontier>& frontiers,
+      const std::vector<Frontier>& archived_frontiers,
+      const std::string& ns) const;
+
   visualization_msgs::msg::MarkerArray drawRayFronts(
-      const std::vector<Frontier>& frontiers, const std::string& ns) const;
+      const std::vector<Frontier>& frontiers,
+      const std::vector<Frontier>& archived_frontiers,
+      const std::string& ns) const;
 
  protected:
   ianvs::NodeHandle nh_;
