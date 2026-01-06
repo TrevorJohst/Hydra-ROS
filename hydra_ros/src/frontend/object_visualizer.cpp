@@ -52,6 +52,7 @@ static const auto registration =
 }
 
 using visualization_msgs::msg::Marker;
+using visualization_msgs::msg::MarkerArray;
 
 void declare_config(ObjectVisualizer::Config& config) {
   using namespace config;
@@ -91,49 +92,52 @@ void ObjectVisualizer::call(uint64_t timestamp_ns,
                             const LabelIndices& label_indices,
                             const MeshSegmenter::LabelClusters& clusters) const {
   pubs_.publish("active_vertices", [&]() {
-    auto msg = std::make_unique<Marker>();
-    msg->header.stamp = rclcpp::Time(timestamp_ns);
-    msg->header.frame_id = GlobalInfo::instance().getFrames().odom;
-    msg->ns = "active_vertices";
-    msg->id = 0;
+    auto arr = std::make_unique<MarkerArray>();
+    auto& msg = arr->markers.emplace_back();
+    msg.header.stamp = rclcpp::Time(timestamp_ns);
+    msg.header.frame_id = GlobalInfo::instance().getFrames().odom;
+    msg.ns = "active_vertices";
+    msg.id = 0;
     std::vector<size_t> active(delta.getNumActiveVertices());
     std::iota(active.begin(), active.end(), delta.getNumArchivedVertices());
-    fillMarkerFromCloud(delta, active, *msg);
-    return msg;
+    fillMarkerFromCloud(delta, active, msg);
+    return arr;
   });
 
-  for (const auto& id_label_pair : label_indices) {
-    pubs_.publish("object_vertices/label" + std::to_string(id_label_pair.first), [&]() {
-      const auto& [label, indices] = id_label_pair;
-      auto msg = std::make_unique<Marker>();
-      msg->header.stamp = rclcpp::Time(timestamp_ns);
-      msg->header.frame_id = GlobalInfo::instance().getFrames().odom;
-      msg->ns = "label_vertices_" + std::to_string(label);
-      msg->id = 0;
-      fillMarkerFromCloud(delta, indices, *msg);
-      return msg;
-    });
-  }
+  pubs_.publish("label_vertices", [&]() {
+    auto arr = std::make_unique<MarkerArray>();
+    for (const auto& [label, indices] : label_indices) {
+      auto& msg = arr->markers.emplace_back();
+      msg.header.stamp = rclcpp::Time(timestamp_ns);
+      msg.header.frame_id = GlobalInfo::instance().getFrames().odom;
+      msg.ns = "label_vertices_" + std::to_string(label);
+      msg.id = 0;
+      fillMarkerFromCloud(delta, indices, msg);
+    }
+
+    return arr;
+  });
 
   pubs_.publish("object_clusters", [&]() {
-    auto msg = std::make_unique<Marker>();
-    msg->header.stamp = rclcpp::Time(timestamp_ns);
-    msg->header.frame_id = GlobalInfo::instance().getFrames().odom;
-    msg->type = Marker::LINE_LIST;
-    msg->action = Marker::ADD;
-    msg->ns = "object_clusters";
-    msg->id = 0;
-    msg->scale.x = config.bounding_box_scale;
+    auto arr = std::make_unique<MarkerArray>();
+    auto& msg = arr->markers.emplace_back();
+    msg.header.stamp = rclcpp::Time(timestamp_ns);
+    msg.header.frame_id = GlobalInfo::instance().getFrames().odom;
+    msg.type = Marker::LINE_LIST;
+    msg.action = Marker::ADD;
+    msg.ns = "object_clusters";
+    msg.id = 0;
+    msg.scale.x = config.bounding_box_scale;
     for (const auto& [label, label_clusters] : clusters) {
       const auto color = visualizer::makeColorMsg(colormap_(label));
       for (const auto& cluster : label_clusters) {
         const DeltaPointAdaptor adaptor(delta, cluster.indices);
         const spark_dsg::BoundingBox bbox(adaptor);
-        visualizer::drawBoundingBox(bbox, color, *msg);
+        visualizer::drawBoundingBox(bbox, color, msg);
       }
     }
 
-    return msg;
+    return arr;
   });
 }
 
