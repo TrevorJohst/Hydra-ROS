@@ -26,7 +26,7 @@ launch:
   - arg: {name: log_path, default: $(env HOME)/.hydra/$(var log_name), description: Directory to output to}
   - arg: {name: exit_after_clock, default: 'false', description: Shutdown hydra node after a rosbag finishes playing}
   - arg: {name: enable_zmq, default: 'false', description: Turn on zmq-based publishing for scene graph}
-  - arg: {name: zmq_url, default: 'tcp://127.0.0.1:8001', description: ZMQ publish url}
+  - arg: {name: zmq_url, default: tcp://127.0.0.1:8001, description: ZMQ publish url}
   - arg: {name: zmq_send_mesh, default: 'false', description: Whether or not to serialize mesh when using ZMQ}
   # hydra node
   - node:
@@ -52,7 +52,8 @@ launch:
         --config-utilities-yaml {enable_zmq: $(var enable_zmq), backend: {zmq_sink: {url: $(var zmq_url), send_mesh: $(var zmq_send_mesh)}}}
         --config-utilities-yaml $(var extra_yaml)
   # hydra visualizer
-  - set_remap: {from: hydra_visualizer/dsg, to: hydra/backend/dsg}
+  - arg: {name: graph_to_visualize, default: backend}
+  - set_remap: {from: hydra_visualizer/dsg, to: hydra/$(var graph_to_visualize)/dsg}
   - arg: {name: start_visualizer, default: 'true', description: run hydra visualizer}
   - include:
       file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
