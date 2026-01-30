@@ -1,7 +1,7 @@
 ---
 launch:
   # development args
-  - arg: {name: verbosity, default: '1'}
+  - arg: {name: verbosity, default: '0'}
   - arg: {name: debug, default: 'false'}
   # visualizer configuration
   - arg: {name: visualizer_ns, default: hydra_visualizer}
