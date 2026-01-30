@@ -32,69 +32,75 @@
  * Government is authorized to reproduce and distribute reprints for Government
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
-#include "hydra_visualizer/plugins/mesh_plugin.h"
-
-#include <config_utilities/config.h>
-#include <config_utilities/validation.h>
-#include <glog/logging.h>
-
-#include "hydra_visualizer/color/colormap_utilities.h"
-#include "hydra_visualizer/drawing.h"
+#include <gtest/gtest.h>
+#include <hydra_visualizer/utils/layer_key_selector.h>
 
 namespace hydra {
-namespace {
 
-static const auto registration =
-    config::RegistrationWithConfig<VisualizerPlugin,
-                                   MeshPlugin,
-                                   MeshPlugin::Config,
-                                   ianvs::NodeHandle,
-                                   std::string>("MeshPlugin");
-
-}
-
-using spark_dsg::DynamicSceneGraph;
-
-void declare_config(MeshPlugin::Config& config) {
-  using namespace config;
-  name("MeshPlugin::Config");
-  field(config.coloring, "coloring");
-}
-
-MeshPlugin::MeshPlugin(const Config& config,
-                       ianvs::NodeHandle nh,
-                       const std::string& name)
-    : VisualizerPlugin(name),
-      config_("mesh_plugin", config::checkValid(config)),
-      mesh_pub_(nh.create_publisher<kimera_pgmo_msgs::msg::Mesh>(
-          name, rclcpp::QoS(1).transient_local())) {}
-
-MeshPlugin::~MeshPlugin() {}
-
-void MeshPlugin::draw(const std_msgs::msg::Header& header,
-                      const DynamicSceneGraph& graph) {
-  auto mesh = graph.mesh();
-  if (!mesh || mesh->empty()) {
-    return;
+TEST(LayerKeySelector, ParsingCorrect) {
+  {  // normal layer
+    LayerKeySelector expected{{3}, false, false};
+    const auto result = LayerKeySelector::parse("3");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, expected);
   }
 
-  const auto config = config_.get();
+  {  // partition
+    LayerKeySelector expected{{3, 2}, false, false};
+    const auto result = LayerKeySelector::parse("3p2");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, expected);
+  }
 
-  auto msg = visualizer::makeMeshMsg(
-      header, *mesh, getMsgNamespace(), config.coloring.create());
-  mesh_pub_->publish(msg);
+  {  // partitions >= 1
+    LayerKeySelector expected{{3}, true, false};
+    const auto result = LayerKeySelector::parse("3p*");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, expected);
+  }
+
+  {  // partitions >= 0
+    LayerKeySelector expected{{3}, true, true};
+    const auto result = LayerKeySelector::parse("3*");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, expected);
+  }
+
+  EXPECT_FALSE(LayerKeySelector::parse("3p"));
 }
 
-void MeshPlugin::reset(const std_msgs::msg::Header& header) {
-  kimera_pgmo_msgs::msg::Mesh msg;
-  msg.header = header;
-  msg.ns = getMsgNamespace();
-  mesh_pub_->publish(msg);
-}
+TEST(LayerKeySelector, MatchesCorrect) {
+  {  // normal layer
+    LayerKeySelector selector{{3}, false, false};
+    EXPECT_FALSE(selector.matches({2}));
+    EXPECT_TRUE(selector.matches({3}));
+    EXPECT_FALSE(selector.matches({3, 1}));
+    EXPECT_FALSE(selector.matches({3, 1}));
+  }
 
-std::string MeshPlugin::getMsgNamespace() const {
-  // TODO(lschmid): Hardcoded for now. Eventually read from scene graph or so.
-  return "robot0/dsg_mesh";
+  {  // partition
+    LayerKeySelector selector{{3, 2}, false, false};
+    EXPECT_FALSE(selector.matches({2}));
+    EXPECT_FALSE(selector.matches({3}));
+    EXPECT_FALSE(selector.matches({3, 1}));
+    EXPECT_TRUE(selector.matches({3, 2}));
+  }
+
+  {  // any partition
+    LayerKeySelector selector{{3}, true, false};
+    EXPECT_FALSE(selector.matches({2}));
+    EXPECT_FALSE(selector.matches({3}));
+    EXPECT_TRUE(selector.matches({3, 1}));
+    EXPECT_TRUE(selector.matches({3, 2}));
+  }
+
+  {  // any partition + default
+    LayerKeySelector selector{{3}, true, true};
+    EXPECT_FALSE(selector.matches({2}));
+    EXPECT_TRUE(selector.matches({3}));
+    EXPECT_TRUE(selector.matches({3, 1}));
+    EXPECT_TRUE(selector.matches({3, 2}));
+  }
 }
 
 }  // namespace hydra

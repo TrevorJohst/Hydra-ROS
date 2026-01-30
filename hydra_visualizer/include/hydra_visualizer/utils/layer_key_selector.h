@@ -32,69 +32,42 @@
  * Government is authorized to reproduce and distribute reprints for Government
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
-#include "hydra_visualizer/plugins/mesh_plugin.h"
-
-#include <config_utilities/config.h>
-#include <config_utilities/validation.h>
-#include <glog/logging.h>
-
-#include "hydra_visualizer/color/colormap_utilities.h"
-#include "hydra_visualizer/drawing.h"
+#pragma once
+#include <spark_dsg/scene_graph_types.h>
 
 namespace hydra {
-namespace {
 
-static const auto registration =
-    config::RegistrationWithConfig<VisualizerPlugin,
-                                   MeshPlugin,
-                                   MeshPlugin::Config,
-                                   ianvs::NodeHandle,
-                                   std::string>("MeshPlugin");
+/*
+ * @brief Type representing a specification for a layer and set of partitions
+ *
+ * Can be of the form
+ *   - [LayerId] (e.g., '2'), which selects Layer 2, Partition 0
+ *   - [LayerId]p[PartitionId] (e.g., '2p1'), which selects Layer 2, Partition 1
+ *   - [LayerId]p* (e.g., '2p*'), which selects Layer 2, Partitions >= 1
+ *   - [LayerId]* (e.g., '2*'), which selects Layer 2, Partitions >= 0
+ */
+struct LayerKeySelector {
+  //! Layer and partition the selector references
+  spark_dsg::LayerKey key;
+  //! @brief whether or not the selector covers all partitions >= 1
+  bool wildcard = false;
+  //! @brief whether or not wildcard includes default partition (partition 0)
+  bool include_default = false;
 
-}
+  static std::optional<LayerKeySelector> parse(const std::string& selector_str);
 
-using spark_dsg::DynamicSceneGraph;
+  std::string str() const;
+  bool matches(spark_dsg::LayerKey to_match) const;
+  bool operator<(const LayerKeySelector& other) const;
+  bool operator==(const LayerKeySelector& other) const;
+  bool operator!=(const LayerKeySelector& other) const;
+};
 
-void declare_config(MeshPlugin::Config& config) {
-  using namespace config;
-  name("MeshPlugin::Config");
-  field(config.coloring, "coloring");
-}
-
-MeshPlugin::MeshPlugin(const Config& config,
-                       ianvs::NodeHandle nh,
-                       const std::string& name)
-    : VisualizerPlugin(name),
-      config_("mesh_plugin", config::checkValid(config)),
-      mesh_pub_(nh.create_publisher<kimera_pgmo_msgs::msg::Mesh>(
-          name, rclcpp::QoS(1).transient_local())) {}
-
-MeshPlugin::~MeshPlugin() {}
-
-void MeshPlugin::draw(const std_msgs::msg::Header& header,
-                      const DynamicSceneGraph& graph) {
-  auto mesh = graph.mesh();
-  if (!mesh || mesh->empty()) {
-    return;
-  }
-
-  const auto config = config_.get();
-
-  auto msg = visualizer::makeMeshMsg(
-      header, *mesh, getMsgNamespace(), config.coloring.create());
-  mesh_pub_->publish(msg);
-}
-
-void MeshPlugin::reset(const std_msgs::msg::Header& header) {
-  kimera_pgmo_msgs::msg::Mesh msg;
-  msg.header = header;
-  msg.ns = getMsgNamespace();
-  mesh_pub_->publish(msg);
-}
-
-std::string MeshPlugin::getMsgNamespace() const {
-  // TODO(lschmid): Hardcoded for now. Eventually read from scene graph or so.
-  return "robot0/dsg_mesh";
-}
+struct SelectorConversion {
+  static std::string toIntermediate(const LayerKeySelector& value, std::string& error);
+  static void fromIntermediate(const std::string& intermediate,
+                               LayerKeySelector& value,
+                               std::string& error);
+};
 
 }  // namespace hydra

@@ -73,14 +73,16 @@ ValueEdgeColorAdapter::ValueEdgeColorAdapter(const Config& config)
       functor_(config::create<EdgeValueFunctor>(config.value_functor)),
       colormap_(config.colormap) {}
 
-void ValueEdgeColorAdapter::setGraph(const DynamicSceneGraph& graph, LayerId layer) {
+void ValueEdgeColorAdapter::setGraph(const DynamicSceneGraph& graph,
+                                     LayerKey layer_key) {
   if (!functor_) {
     return;
   }
 
   bool is_first = true;
   try {
-    for (const auto& [key, edge] : graph.getLayer(layer).edges()) {
+    const auto& layer = graph.getLayer(layer_key.layer, layer_key.partition);
+    for (const auto& [key, edge] : layer.edges()) {
       const auto value = functor_->eval(graph, edge);
       if (is_first) {
         min_value_ = value;
@@ -119,12 +121,14 @@ TraversabilityEdgeColorAdapter::TraversabilityEdgeColorAdapter(const Config& con
     : config(config), min_value_(0.0), max_value_(1.0), colormap_(config.colormap) {}
 
 void TraversabilityEdgeColorAdapter::setGraph(const DynamicSceneGraph& graph,
-                                              LayerId layer) {
-  if (!graph.hasLayer(layer)) {
+                                              LayerKey key) {
+  const auto layer = graph.findLayer(key.layer, key.partition);
+  if (!layer) {
     return;
   }
+
   bool is_first = true;
-  for (const auto& [key, edge] : graph.getLayer(layer).edges()) {
+  for (const auto& [key, edge] : layer->edges()) {
     const auto value = edge.attributes().weight;
     if (value < 0.0) {
       continue;
