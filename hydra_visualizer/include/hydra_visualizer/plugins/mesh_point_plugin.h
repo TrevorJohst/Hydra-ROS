@@ -33,48 +33,45 @@
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
 #pragma once
-#include <hydra/frontend/mesh_segmenter.h>
-#include <hydra_visualizer/color/colormap_utilities.h>
-#include <ianvs/lazy_publisher_group.h>
 
-#include <visualization_msgs/msg/marker_array.hpp>
+#include <config_utilities/dynamic_config.h>
+
+#include "hydra_visualizer/plugins/layer_plugin.h"
 
 namespace hydra {
 
-class ObjectVisualizer : public MeshSegmenter::Sink {
+/**
+ * @brief Plugin to draw mesh points that comprise a node
+ *
+ * Works for 2D places or objects
+ */
+class MeshPointPlugin : public LayerPlugin {
  public:
   struct Config {
-    std::string module_ns = "~/objects";
-    double point_scale = 0.1;
-    double point_alpha = 0.7;
+    //! Draw size for mesh points
+    double point_size = 0.02;
+    //! Use spheres for mesh points instead of cubes
     bool use_spheres = false;
-    double bounding_box_scale = 0.1;
-    visualizer::CategoricalColormap::Config colormap;
-  } const config;
+    //! Use the node color instead of the mesh color
+    bool use_node_color = true;
+    //! Alpha for mesh points
+    double alpha = 1.0;
+  };
 
-  explicit ObjectVisualizer(const Config& config);
+  MeshPointPlugin(const Config& config, const std::string& ns);
 
-  ~ObjectVisualizer() = default;
+  void draw(const std_msgs::msg::Header& header,
+            const visualizer::LayerInfo& info,
+            const spark_dsg::SceneGraphLayer& layer,
+            const spark_dsg::Mesh* mesh,
+            visualization_msgs::msg::MarkerArray& msg,
+            MarkerTracker& tracker) override;
 
-  std::string printInfo() const override;
-
-  void call(uint64_t timestamp_ns,
-            const kimera_pgmo::MeshDelta& delta,
-            const LabelIndices& label_indices,
-            const MeshSegmenter::LabelClusters& clusters) const override;
-
- protected:
-  void fillMarkerFromCloud(const kimera_pgmo::MeshDelta& delta,
-                           const std::vector<size_t>& indices,
-                           visualization_msgs::msg::Marker& marker) const;
-
- protected:
-  ianvs::NodeHandle nh_;
-  ianvs::RosPublisherGroup<visualization_msgs::msg::MarkerArray> pubs_;
-
-  const visualizer::CategoricalColormap colormap_;
+ private:
+  std::string ns_;
+  config::DynamicConfig<Config> config_;
 };
 
-void declare_config(ObjectVisualizer::Config& conf);
+void declare_config(MeshPointPlugin::Config& config);
 
 }  // namespace hydra

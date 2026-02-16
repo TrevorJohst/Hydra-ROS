@@ -51,13 +51,12 @@ inline Color getNodeColor(const SceneGraphNode& node) {
 
 }  // namespace
 
-// TODO(nathan) validity checks
-
 void declare_config(LayerConfig::Nodes& config) {
   using namespace config;
   name("LayerConfig::Nodes");
   field(config.draw, "draw");
   field(config.scale, "scale");
+  config.color.setOptional();
   field(config.color, "color");
   field(config.alpha, "alpha");
   field(config.use_sphere, "use_sphere");
@@ -72,14 +71,12 @@ void declare_config(LayerConfig::Edges& config) {
   field(config.draw, "draw");
   field(config.scale, "scale");
   field(config.alpha, "alpha");
-  enum_field(config.color, "color");
-  field(config.use_color, "use_color");
-  field(config.draw_interlayer, "draw_interlayer");
-  field(config.interlayer_use_source, "interlayer_use_source");
-  field(config.interlayer_scale, "interlayer_scale");
-  field(config.interlayer_alpha, "interlayer_alpha");
-  field(config.interlayer_use_color, "interlayer_use_color");
-  field(config.interlayer_insertion_skip, "interlayer_insertion_skip");
+  config.color.setOptional();
+  field(config.color, "color");
+  field(config.insertion_skip, "insertion_skip");
+
+  check(config.scale, GT, 0.0, "scale");
+  checkInRange(config.alpha, 0.0, 1.0, "alpha");
 }
 
 void declare_config(LayerConfig::Text& config) {
@@ -88,12 +85,16 @@ void declare_config(LayerConfig::Text& config) {
   field(config.draw, "draw");
   field(config.draw_layer, "draw_layer");
   field(config.collapse, "collapse");
+  config.adapter.setOptional();
   field(config.adapter, "adapter");
   field(config.height, "height");
   field(config.scale, "scale");
   field(config.add_jitter, "add_jitter");
   field(config.jitter_scale, "jitter_scale");
   enum_field(config.color, "color");
+
+  check(config.scale, GT, 0.0, "scale");
+  check(config.jitter_scale, GE, 0.0, "jitter_scale");
 }
 
 void declare_config(LayerConfig::BoundingBoxes& config) {
@@ -105,6 +106,11 @@ void declare_config(LayerConfig::BoundingBoxes& config) {
   field(config.edge_scale, "edge_scale");
   field(config.alpha, "alpha");
   field(config.edge_break_ratio, "edge_break_ratio");
+
+  check(config.scale, GT, 0.0, "scale");
+  check(config.edge_scale, GT, 0.0, "edge_scale");
+  checkInRange(config.alpha, 0.0, 1.0, "alpha");
+  checkInRange(config.edge_break_ratio, 0.0, 1.0, "edge_break_ratio");
 }
 
 void declare_config(LayerConfig::Boundaries& config) {
@@ -117,6 +123,10 @@ void declare_config(LayerConfig::Boundaries& config) {
   field(config.alpha, "alpha");
   field(config.draw_ellipse, "draw_ellipse");
   field(config.ellipse_alpha, "ellipse_alpha");
+
+  check(config.wireframe_scale, GT, 0.0, "wireframe_scale");
+  checkInRange(config.alpha, 0.0, 1.0, "alpha");
+  checkInRange(config.ellipse_alpha, 0.0, 1.0, "ellipse_alpha");
 }
 
 void declare_config(LayerConfig& config) {
@@ -125,7 +135,6 @@ void declare_config(LayerConfig& config) {
   field(config.visualize, "visualize");
   field(config.z_offset_scale, "z_offset_scale");
   field(config.draw_frontier_ellipse, "draw_frontier_ellipse");
-  field(config.draw_mesh_edges, "draw_mesh_edges");
 
   // subconfigs
   field(config.nodes, "nodes");
@@ -135,7 +144,7 @@ void declare_config(LayerConfig& config) {
   field(config.boundaries, "boundaries");
 }
 
-LayerInfo::LayerInfo(const LayerConfig config)
+LayerInfo::LayerInfo(const LayerConfig& config)
     : config(config),
       z_offset(0.0),
       node_color(&getNodeColor),
@@ -146,12 +155,28 @@ LayerInfo& LayerInfo::offset(double offset_size, bool collapse) {
   return *this;
 }
 
-LayerInfo& LayerInfo::graph(const DynamicSceneGraph& graph, LayerId layer) {
-  color_adapter_ = config.nodes.color.create();
-  if (color_adapter_) {
-    color_adapter_->setGraph(graph, layer);
+LayerInfo& LayerInfo::graph(const DynamicSceneGraph& graph, LayerKey layer) {
+  node_color_adapter_ = config.nodes.color.create();
+  if (node_color_adapter_) {
+    node_color_adapter_->setGraph(graph, layer);
     node_color = [this, &graph](const SceneGraphNode& node) {
-      return color_adapter_->getColor(graph, node);
+      return node_color_adapter_->getColor(graph, node);
+    };
+  }
+
+  edge_color_adapter_ = config.edges.color.create();
+  if (edge_color_adapter_) {
+    edge_color_adapter_->setGraph(graph, layer);
+    edge_color = [this, &graph](const SceneGraphEdge& edge) {
+      return edge_color_adapter_->getColor(graph, edge);
+    };
+  } else {
+    // If not specified, use node colors.
+    // TODO(lschmid): This is not the prettiest, but e.g. handing the layerinfo to the
+    // adapters or so also didn't seem right.
+    edge_color = [this, &graph](const SceneGraphEdge& edge) {
+      return std::make_pair(node_color(graph.getNode(edge.source)),
+                            node_color(graph.getNode(edge.target)));
     };
   }
 
@@ -166,8 +191,6 @@ LayerInfo& LayerInfo::graph(const DynamicSceneGraph& graph, LayerId layer) {
 }
 
 Color LayerInfo::text_color() const { return colorFromName(config.text.color); }
-
-Color LayerInfo::edge_color() const { return colorFromName(config.edges.color); }
 
 bool LayerInfo::shouldVisualize(const spark_dsg::SceneGraphNode& node) const {
   if (!config.visualize) {

@@ -32,3 +32,35 @@
  * Government is authorized to reproduce and distribute reprints for Government
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
+#pragma once
+#include <spark_dsg/dynamic_scene_graph.h>
+
+#include <visualization_msgs/msg/marker_array.hpp>
+
+#include "hydra_visualizer/layer_info.h"
+#include "hydra_visualizer/utils/marker_tracker.h"
+
+namespace hydra {
+
+struct LayerPlugin {
+ public:
+  using Ptr = std::unique_ptr<LayerPlugin>;
+
+  virtual ~LayerPlugin() = default;
+
+  virtual void draw(const std_msgs::msg::Header& header,
+                    const visualizer::LayerInfo& info,
+                    const spark_dsg::SceneGraphLayer& layer,
+                    const spark_dsg::Mesh* mesh,
+                    visualization_msgs::msg::MarkerArray& msg,
+                    MarkerTracker& tracker) = 0;
+
+  virtual bool hasChange() const { return has_change_; }
+
+  virtual void clearChangeFlag() { has_change_ = false; }
+
+ protected:
+  bool has_change_ = false;
+};
+
+}  // namespace hydra

@@ -33,48 +33,49 @@
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
 #pragma once
-#include <hydra/frontend/mesh_segmenter.h>
-#include <hydra_visualizer/color/colormap_utilities.h>
-#include <ianvs/lazy_publisher_group.h>
-
-#include <visualization_msgs/msg/marker_array.hpp>
+#include <spark_dsg/scene_graph_types.h>
 
 namespace hydra {
 
-class ObjectVisualizer : public MeshSegmenter::Sink {
- public:
-  struct Config {
-    std::string module_ns = "~/objects";
-    double point_scale = 0.1;
-    double point_alpha = 0.7;
-    bool use_spheres = false;
-    double bounding_box_scale = 0.1;
-    visualizer::CategoricalColormap::Config colormap;
-  } const config;
+/*
+ * @brief Type representing a specification for a layer and set of partitions
+ *
+ * Can be of the form
+ *   - [LayerId] (e.g., '2'), which selects Layer 2, Partition 0
+ *   - [LayerId]p[PartitionId] (e.g., '2p1'), which selects Layer 2, Partition 1
+ *   - [LayerId]p* (e.g., '2p*'), which selects Layer 2, Partitions >= 1
+ *   - [LayerId]* (e.g., '2*'), which selects Layer 2, Partitions >= 0
+ */
+struct LayerKeySelector {
+  //! Layer and partition the selector references
+  spark_dsg::LayerKey key;
+  //! @brief whether or not the selector covers all partitions >= 1
+  bool wildcard = false;
+  //! @brief whether or not wildcard includes default partition (partition 0)
+  bool include_default = false;
 
-  explicit ObjectVisualizer(const Config& config);
+  static std::optional<LayerKeySelector> parse(const std::string& selector_str);
 
-  ~ObjectVisualizer() = default;
-
-  std::string printInfo() const override;
-
-  void call(uint64_t timestamp_ns,
-            const kimera_pgmo::MeshDelta& delta,
-            const LabelIndices& label_indices,
-            const MeshSegmenter::LabelClusters& clusters) const override;
-
- protected:
-  void fillMarkerFromCloud(const kimera_pgmo::MeshDelta& delta,
-                           const std::vector<size_t>& indices,
-                           visualization_msgs::msg::Marker& marker) const;
-
- protected:
-  ianvs::NodeHandle nh_;
-  ianvs::RosPublisherGroup<visualization_msgs::msg::MarkerArray> pubs_;
-
-  const visualizer::CategoricalColormap colormap_;
+  std::string str() const;
+  bool matches(spark_dsg::LayerKey to_match) const;
+  bool operator<(const LayerKeySelector& other) const;
+  bool operator==(const LayerKeySelector& other) const;
+  bool operator!=(const LayerKeySelector& other) const;
 };
 
-void declare_config(ObjectVisualizer::Config& conf);
+struct SelectorConversion {
+  static std::string toIntermediate(const LayerKeySelector& value, std::string& error);
+  static void fromIntermediate(const std::string& intermediate,
+                               LayerKeySelector& value,
+                               std::string& error);
+};
+
+struct LayerKeyConversion {
+  static std::string toIntermediate(const spark_dsg::LayerKey& value,
+                                    std::string& error);
+  static void fromIntermediate(const std::string& intermediate,
+                               spark_dsg::LayerKey& value,
+                               std::string& error);
+};
 
 }  // namespace hydra

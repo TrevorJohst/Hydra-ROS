@@ -8,10 +8,6 @@ repositories:
     type: git
     url: https://github.com/MIT-SPARK/Hydra.git
     version: main
-  hydra_ros:
-    type: git
-    url: https://github.com/MIT-SPARK/Hydra-ROS.git
-    version: main
   ianvs:
     type: git
     url: https://github.com/MIT-SPARK/Ianvs.git

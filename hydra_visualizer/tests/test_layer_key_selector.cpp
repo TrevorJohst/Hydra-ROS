@@ -32,49 +32,75 @@
  * Government is authorized to reproduce and distribute reprints for Government
  * purposes notwithstanding any copyright notation herein.
  * -------------------------------------------------------------------------- */
-#pragma once
-#include <hydra/frontend/mesh_segmenter.h>
-#include <hydra_visualizer/color/colormap_utilities.h>
-#include <ianvs/lazy_publisher_group.h>
-
-#include <visualization_msgs/msg/marker_array.hpp>
+#include <gtest/gtest.h>
+#include <hydra_visualizer/utils/layer_key_selector.h>
 
 namespace hydra {
 
-class ObjectVisualizer : public MeshSegmenter::Sink {
- public:
-  struct Config {
-    std::string module_ns = "~/objects";
-    double point_scale = 0.1;
-    double point_alpha = 0.7;
-    bool use_spheres = false;
-    double bounding_box_scale = 0.1;
-    visualizer::CategoricalColormap::Config colormap;
-  } const config;
+TEST(LayerKeySelector, ParsingCorrect) {
+  {  // normal layer
+    LayerKeySelector expected{{3}, false, false};
+    const auto result = LayerKeySelector::parse("3");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, expected);
+  }
 
-  explicit ObjectVisualizer(const Config& config);
+  {  // partition
+    LayerKeySelector expected{{3, 2}, false, false};
+    const auto result = LayerKeySelector::parse("3p2");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, expected);
+  }
 
-  ~ObjectVisualizer() = default;
+  {  // partitions >= 1
+    LayerKeySelector expected{{3}, true, false};
+    const auto result = LayerKeySelector::parse("3p*");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, expected);
+  }
 
-  std::string printInfo() const override;
+  {  // partitions >= 0
+    LayerKeySelector expected{{3}, true, true};
+    const auto result = LayerKeySelector::parse("3*");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, expected);
+  }
 
-  void call(uint64_t timestamp_ns,
-            const kimera_pgmo::MeshDelta& delta,
-            const LabelIndices& label_indices,
-            const MeshSegmenter::LabelClusters& clusters) const override;
+  EXPECT_FALSE(LayerKeySelector::parse("3p"));
+}
 
- protected:
-  void fillMarkerFromCloud(const kimera_pgmo::MeshDelta& delta,
-                           const std::vector<size_t>& indices,
-                           visualization_msgs::msg::Marker& marker) const;
+TEST(LayerKeySelector, MatchesCorrect) {
+  {  // normal layer
+    LayerKeySelector selector{{3}, false, false};
+    EXPECT_FALSE(selector.matches({2}));
+    EXPECT_TRUE(selector.matches({3}));
+    EXPECT_FALSE(selector.matches({3, 1}));
+    EXPECT_FALSE(selector.matches({3, 1}));
+  }
 
- protected:
-  ianvs::NodeHandle nh_;
-  ianvs::RosPublisherGroup<visualization_msgs::msg::MarkerArray> pubs_;
+  {  // partition
+    LayerKeySelector selector{{3, 2}, false, false};
+    EXPECT_FALSE(selector.matches({2}));
+    EXPECT_FALSE(selector.matches({3}));
+    EXPECT_FALSE(selector.matches({3, 1}));
+    EXPECT_TRUE(selector.matches({3, 2}));
+  }
 
-  const visualizer::CategoricalColormap colormap_;
-};
+  {  // any partition
+    LayerKeySelector selector{{3}, true, false};
+    EXPECT_FALSE(selector.matches({2}));
+    EXPECT_FALSE(selector.matches({3}));
+    EXPECT_TRUE(selector.matches({3, 1}));
+    EXPECT_TRUE(selector.matches({3, 2}));
+  }
 
-void declare_config(ObjectVisualizer::Config& conf);
+  {  // any partition + default
+    LayerKeySelector selector{{3}, true, true};
+    EXPECT_FALSE(selector.matches({2}));
+    EXPECT_TRUE(selector.matches({3}));
+    EXPECT_TRUE(selector.matches({3, 1}));
+    EXPECT_TRUE(selector.matches({3, 2}));
+  }
+}
 
 }  // namespace hydra

@@ -38,7 +38,6 @@
 #include <config_utilities/validation.h>
 #include <glog/logging.h>
 
-#include "hydra_visualizer/color/colormap_utilities.h"
 #include "hydra_visualizer/drawing.h"
 
 namespace hydra {
@@ -65,7 +64,7 @@ MeshPlugin::MeshPlugin(const Config& config,
                        ianvs::NodeHandle nh,
                        const std::string& name)
     : VisualizerPlugin(name),
-      config_("MeshPlugin", config::checkValid(config)),
+      config_("mesh_plugin", config::checkValid(config)),
       mesh_pub_(nh.create_publisher<kimera_pgmo_msgs::msg::Mesh>(
           name, rclcpp::QoS(1).transient_local())) {}
 
